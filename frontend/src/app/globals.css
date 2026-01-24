@@ -1,0 +1,96 @@
+:root {
+  /* User Defined Palette */
+  --Primaire: #1E3664;
+  --Secondaire: #0698D6;
+  --Accent-1: #BF82FE;
+  --Accent-2: #47DA60;
+  --Accent-3: #CB0000;
+  --Accent-4: #D2CCAF;
+  --Texte: #060D19;
+  --Background: #F7FAFF;
+  --Texte-light: #A7A7A7;
+
+  /* Mapping for existing components (Aliases) */
+  --background: var(--Background);
+  --text-primary: var(--Texte);
+  --text-secondary: var(--Texte-light);
+  --primary-blue: var(--Primaire);
+  /* Legacy alias */
+  --error: var(--Accent-3);
+  --input-bg: #FFFFFF;
+  --input-border: #E2E8F0;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: var(--font-jakarta), sans-serif;
+  background: var(--Background);
+  color: var(--Texte);
+  min-height: 100vh;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+/* Utilities */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.btn-primary {
+  background-color: var(--Primaire);
+  color: white;
+  padding: 1rem 2rem;
+  border-radius: 6px;
+  border: none;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.2s;
+  width: 100%;
+}
+
+.btn-primary:hover {
+  background-color: #152648;
+  /* Darker shade of Primaire */
+}
+
+.btn-primary:disabled {
+  background-color: var(--Texte-light);
+  cursor: not-allowed;
+}
+
+input {
+  width: 100%;
+  padding: 14px;
+  margin: 8px 0;
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: 6px;
+  color: var(--Texte);
+  outline: none;
+  transition: all 0.2s ease;
+  font-size: 1rem;
+}
+
+input:focus {
+  border-color: var(--Secondaire);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(6, 152, 214, 0.1);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  color: var(--Primaire);
+  font-family: var(--font-bricolage), sans-serif;
+}

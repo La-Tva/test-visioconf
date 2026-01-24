@@ -1,0 +1,179 @@
+.container {
+    min-height: 100vh;
+    padding: 3rem 4rem;
+    background-color: #FFFFFF;
+    /* White background as per image */
+    font-family: var(--font-jakarta), sans-serif;
+    color: var(--Texte);
+}
+
+/* Top Right User Profile */
+.topHeader {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 2rem;
+}
+
+.userMenu {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+}
+
+.userAvatarSmall {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    background-color: #E2E8F0;
+}
+
+/* Main Heading */
+.welcomeTitle {
+    font-family: var(--font-jakarta);
+    /* Image uses a clean sans, possibly Jakarta or Inter */
+    font-size: 2rem;
+    font-weight: 500;
+    margin-bottom: 3rem;
+    color: #000;
+}
+
+.highlightName {
+    font-weight: 800;
+}
+
+/* Upper Section: Groups & History */
+.dashboardGrid {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    gap: 4rem;
+    margin-bottom: 4rem;
+}
+
+.sectionTitle {
+    font-size: 1rem;
+    font-weight: 800;
+    margin-bottom: 1.5rem;
+    color: #000;
+}
+
+/* Groups */
+.groupsRow {
+    display: flex;
+    gap: 15px;
+}
+
+.groupAvatar {
+    width: 60px;
+    height: 60px;
+    border-radius: 16px;
+    /* Squaricle shape */
+    background-color: #E2E8F0;
+    object-fit: cover;
+    transition: transform 0.2s;
+    cursor: pointer;
+}
+
+.groupAvatar:hover {
+    transform: translateY(-3px);
+}
+
+/* History */
+.historyContainer {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.historyIcon {
+    width: 24px;
+    height: 24px;
+    color: #64748B;
+}
+
+.historyText {
+    font-weight: 700;
+    color: #0F172A;
+}
+
+/* Notifications Section */
+.notificationsSection {
+    margin-top: 2rem;
+}
+
+.notifHeader {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 1.5rem;
+}
+
+.bellIcon {
+    font-size: 1.5rem;
+}
+
+.notifTitle {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: #000;
+}
+
+.notifList {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.notifItem {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 0;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.notifItem:hover {
+    background-color: #F8FAFC;
+    border-radius: 8px;
+    padding: 10px;
+    margin: 0 -10px;
+}
+
+.notifLeft {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.notifAvatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+    background-color: #E2E8F0;
+}
+
+.notifContent {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.notifName {
+    font-weight: 800;
+    font-size: 1rem;
+    color: #0F172A;
+}
+
+.notifMessage {
+    font-size: 0.9rem;
+    color: #64748B;
+}
+
+.arrowIcon {
+    color: #94A3B8;
+    width: 20px;
+    height: 20px;
+}

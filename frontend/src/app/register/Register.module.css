@@ -1,0 +1,321 @@
+.container {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    margin: 0;
+    /* Was 100vw, changed to 100% to avoid scrollbar issues */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* Dotted Pattern Background */
+    background-color: var(--Background);
+    background-image: radial-gradient(#E5E7EB 1.5px, transparent 1.5px);
+    background-size: 24px 24px;
+    padding: 20px;
+    overflow: hidden;
+    /* Disable scroll */
+}
+
+.card {
+    display: flex;
+    width: 100%;
+    max-width: 1200px;
+    min-height: 700px;
+    background: white;
+    border-radius: 30px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+    overflow: hidden;
+}
+
+/* LEFT SIDE - FORM */
+.leftSide {
+    flex: 1;
+    padding: 3rem 4rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    background: white;
+}
+
+.logo {
+    height: 40px;
+    margin-bottom: 2rem;
+    align-self: flex-start;
+}
+
+.welcomeText {
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: var(--Texte);
+    margin-bottom: 2rem;
+}
+
+/* Google/SSO Button Mockup */
+.ssoButton {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #E5E7EB;
+    border-radius: 50px;
+    background: white;
+    font-weight: 600;
+    color: #4B5563;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 2rem;
+    font-size: 0.9rem;
+}
+
+.ssoButton:hover {
+    background: #F9FAFB;
+    border-color: #D1D5DB;
+}
+
+.googleIcon {
+    width: 20px;
+    height: 20px;
+}
+
+.divider {
+    display: flex;
+    align-items: center;
+    color: #9CA3AF;
+    font-size: 0.8rem;
+    margin-bottom: 2rem;
+    font-weight: 600;
+}
+
+.divider::before,
+.divider::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: #E5E7EB;
+}
+
+.divider::before {
+    margin-right: 15px;
+}
+
+.divider::after {
+    margin-left: 15px;
+}
+
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.input {
+    width: 100%;
+    padding: 16px;
+    border: 1px solid #E5E7EB;
+    border-radius: 12px;
+    font-size: 1rem;
+    color: var(--Texte);
+    background: #FAFAFA;
+    transition: all 0.2s;
+}
+
+.input:focus {
+    outline: none;
+    border-color: var(--Primaire);
+    background: white;
+    box-shadow: 0 0 0 4px rgba(21, 38, 72, 0.1);
+}
+
+.inputWithIcon {
+    width: 100%;
+    padding: 16px;
+    padding-right: 45px;
+    /* Space for icon */
+    border: 1px solid #E5E7EB;
+    border-radius: 12px;
+    font-size: 1rem;
+    color: var(--Texte);
+    background: #FAFAFA;
+    transition: all 0.2s;
+}
+
+.inputWithIcon:focus {
+    outline: none;
+    border-color: var(--Primaire);
+    background: white;
+    box-shadow: 0 0 0 4px rgba(21, 38, 72, 0.1);
+}
+
+.input::placeholder,
+.inputWithIcon::placeholder {
+    color: #9CA3AF;
+}
+
+.row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.9rem;
+    color: #6B7280;
+}
+
+.eyeIcon {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+    background: transparent;
+    z-index: 5;
+    color: #9CA3AF;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.eyeIcon:hover {
+    color: var(--Texte);
+}
+
+.forgotLink {
+    .forgotLink {
+        color: var(--Primaire);
+        text-decoration: underline;
+        cursor: pointer;
+        font-weight: 600;
+    }
+}
+
+.loginButton {
+    width: 100%;
+    padding: 16px;
+    background: var(--Primaire);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.loginButton:hover {
+    background: #152648;
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(21, 38, 72, 0.2);
+}
+
+.signupText {
+    text-align: center;
+    margin-top: 2rem;
+    font-size: 0.9rem;
+    color: #6B7280;
+}
+
+.signupLink {
+    color: var(--Primaire);
+    font-weight: 700;
+    cursor: pointer;
+    margin-left: 5px;
+}
+
+/* RIGHT SIDE - VISUALS */
+.rightSide {
+    flex: 1;
+    background: #EAF4FF;
+    /* Very light blue */
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+    padding: 3rem;
+}
+
+.updateTag {
+    position: absolute;
+    top: 3rem;
+    right: 3rem;
+    text-align: right;
+    z-index: 10;
+    /* Ensure it's clickable above illustration */
+}
+
+.updateTitle {
+    font-weight: 700;
+    color: var(--Texte);
+    margin-bottom: 5px;
+}
+
+.updateDesc {
+    font-size: 0.8rem;
+    color: #6B7280;
+    margin-bottom: 15px;
+    max-width: 200px;
+    margin-left: auto;
+}
+
+.learnMore {
+    padding: 8px 16px;
+    border: 1px solid #ccc;
+    background: transparent;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.illustrationContainer {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+/* Phone/Group Mockup using existing assets mostly */
+.visualImage {
+    width: 90%;
+    max-width: 500px;
+    height: auto;
+    filter: drop-shadow(0 20px 40px rgba(0, 0, 0, 0.1));
+    animation: float 6s ease-in-out infinite;
+}
+
+@keyframes float {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-20px);
+    }
+}
+
+@media (max-width: 1024px) {
+    .container {
+        background: #F0F6FF;
+    }
+
+    .card {
+        flex-direction: column;
+        max-width: 500px;
+    }
+
+    .rightSide {
+        display: none;
+        /* Hide visual on mobile to keep it clean */
+    }
+
+    .leftSide {
+        padding: 2rem;
+    }
+}

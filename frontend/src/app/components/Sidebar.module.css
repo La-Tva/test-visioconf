@@ -1,0 +1,146 @@
+.sidebar {
+    height: 95vh;
+    background-color: #FFFFFF;
+    /* Added strong shadow for visibility as requested */
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.08);
+    border-right: 1px solid #F1F5F9;
+    display: flex;
+    flex-direction: column;
+    padding: 24px 16px;
+    /* Smoother 'bouncy' transition */
+    transition: width 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+    flex-shrink: 0;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    overflow: hidden;
+}
+
+.expanded {
+    width: 280px;
+}
+
+.collapsed {
+    width: 88px;
+    /* Slightly wider collapsed state for better icon breathing room */
+}
+
+/* Header */
+.header {
+    margin-bottom: 40px;
+    display: flex;
+    align-items: center;
+    height: 48px;
+    overflow: hidden;
+    padding-left: 2px;
+    /* Slight alignment fix */
+}
+
+.logoContainer {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    white-space: nowrap;
+}
+
+.logoIcon {
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    /* Animated logo */
+    transition: transform 0.3s ease;
+}
+
+.sidebar:hover .logoIcon {
+    transform: scale(1.1);
+}
+
+.logoText {
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: var(--Primaire);
+    opacity: 0;
+    /* Delay the text appearance so it doesn't clip during expansion */
+    transition: opacity 0.2s ease;
+    transition-delay: 0s;
+    font-family: var(--font-bricolage);
+    transform: translateX(-10px);
+}
+
+.expanded .logoText {
+    opacity: 1;
+    transform: translateX(0);
+    transition: opacity 0.4s ease 0.1s, transform 0.4s ease 0.1s;
+}
+
+/* Nav */
+.nav {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1;
+}
+
+.navItem {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 14px;
+    border-radius: 12px;
+    color: #64748B;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    white-space: nowrap;
+    position: relative;
+    overflow: hidden;
+}
+
+.navItem:hover {
+    background-color: #F8FAFC;
+    color: var(--Primaire);
+    transform: translateX(4px);
+}
+
+.active {
+    background-color: #E0F2FE;
+    color: var(--Primaire);
+    font-weight: 700;
+    /* Active indicator stripe */
+    box-shadow: inset 4px 0 0 var(--Secondaire);
+}
+
+.active:hover {
+    background-color: #DBEAFE;
+}
+
+.icon {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.label {
+    font-size: 1rem;
+    font-weight: 600;
+    opacity: 0;
+    transform: translateX(-10px);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.expanded .label {
+    opacity: 1;
+    transform: translateX(0);
+    /* Sync text reveal with width expansion */
+    transition: opacity 0.3s ease 0.1s, transform 0.3s ease 0.1s;
+}
+
+/* Footer */
+.footer {
+    margin-top: auto;
+    border-top: 1px solid #F1F5F9;
+    padding-top: 16px;
+}

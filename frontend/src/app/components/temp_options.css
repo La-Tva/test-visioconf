@@ -1,0 +1,33 @@
+.optionsRow {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    margin-bottom: 20px;
+}
+
+.rememberMe {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+    color: #666;
+    cursor: pointer;
+}
+
+.rememberMe input {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
+.forgotPassword {
+    font-size: 0.9rem;
+    color: #152648;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.forgotPassword:hover {
+    text-decoration: underline;
+}

@@ -1,0 +1,176 @@
+"use client";
+import React, { useEffect, useRef, useState } from 'react';
+import { useSocket } from '../context/SocketContext';
+import { usePathname, useRouter } from 'next/navigation';
+
+export default function GlobalRequestHandler() {
+    const [request, setRequest] = useState(null);
+    const [msgNotification, setMsgNotification] = useState(null);
+    const globalCompRef = useRef(null);
+    const { controleur, identifyUser, isReady } = useSocket();
+    const pathname = usePathname();
+    const router = useRouter();
+
+    useEffect(() => {
+        if (!controleur || !isReady) return;
+
+        const globalComp = {
+            nomDInstance: "GlobalHandler",
+            traitementMessage: (msg) => {
+                console.log("GlobalHandler received raw msg:", msg);
+                if (msg.receive_friend_request) {
+                    setRequest(msg.receive_friend_request.fromUser);
+                }
+                else if (msg.friend_request_accepted) {
+                    console.log("Friend request accepted", msg.friend_request_accepted);
+                }
+                else if (msg['auth status'] && msg['auth status'].success) {
+                    // Check for pending requests
+                    const user = msg['auth status'].user;
+                    if (user.friendRequests && user.friendRequests.length > 0) {
+                        // For now, just show the first one. Stack them if needed?
+                        // Or show a list? The current UI handles one 'request' state.
+                        // Let's pick the last one.
+                        const lastRequest = user.friendRequests[user.friendRequests.length - 1];
+                        // If populated, lastRequest is an object.
+                        setRequest(lastRequest);
+                    }
+                }
+
+                else if (msg.receive_private_message) {
+                    if (pathname !== '/messages') {
+                        const newMsg = msg.receive_private_message;
+                        // Fetch sender name logic? 
+                        // The message object usually has senderId. User might not be in preload if we are not authenticated?
+                        // Assuming newMsg has basic info or we can't show name yet without fetching.
+                        // Ideally backend sends senderName or we lookup.
+                        // For MVP: Show "Nouveau message !" or if `sender` is populated?
+                        // Modify server to send senderName? Or just "Nouveau message".
+                        // Server (Step 203) just saves message. The emit (Step 332 in previous contexts) might vary.
+                        // Let's assume we just show a generic or partial info for now.
+                        setMsgNotification({
+                            content: newMsg.content,
+                            senderId: newMsg.sender // ID only
+                        });
+                        
+                        // Auto hide
+                        setTimeout(() => setMsgNotification(null), 5000);
+                    }
+                }
+            }
+        };
+        globalCompRef.current = globalComp;
+        controleur.inscription(globalComp, ['friend_response'], ['receive_friend_request', 'friend_request_accepted', 'auth status', 'receive_private_message']);
+
+        // Identify global handler
+        const userStr = localStorage.getItem('user');
+        if (userStr) {
+             const u = JSON.parse(userStr);
+             // We can use the context helper to identify globally
+             identifyUser(u._id);
+        }
+
+        return () => {
+             controleur.desincription(globalComp, ['friend_response'], ['receive_friend_request', 'friend_request_accepted', 'auth status', 'receive_private_message']);
+        };
+
+    }, [controleur, isReady]);
+
+    const handleResponse = (accepted) => {
+        if (!request || !controleur) return;
+        
+        const userStr = localStorage.getItem('user');
+        if (userStr) {
+            const u = JSON.parse(userStr);
+            const comp = globalCompRef.current;
+            
+            controleur.envoie(comp, {
+                friend_response: {
+                    userId: u._id,
+                    requesterId: request._id,
+                    accepted: accepted
+                }
+            });
+        }
+        setRequest(null);
+    };
+
+    // Render Notifications
+    return (
+        <>
+            {request && (
+                <div style={{
+                    position: 'fixed',
+                    bottom: '20px',
+                    right: '20px',
+                    backgroundColor: 'white',
+                    padding: '20px',
+                    borderRadius: '12px',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                    zIndex: 9999,
+                    border: '1px solid #e2e8f0'
+                }}>
+                    <h4 style={{margin: '0 0 10px 0', fontSize:'16px'}}>Demande d'ami</h4>
+                    <p style={{margin: '0 0 15px 0', color:'#64748B'}}>
+                        <strong>{request.firstname}</strong> souhaite vous ajouter.
+                    </p>
+                    <div style={{display:'flex', gap:'10px'}}>
+                        <button 
+                            onClick={() => handleResponse(true)}
+                            style={{
+                                padding: '8px 16px',
+                                backgroundColor: '#22C55E',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '6px',
+                                cursor: 'pointer'
+                            }}
+                        >
+                            Accepter
+                        </button>
+                        <button 
+                            onClick={() => handleResponse(false)}
+                            style={{
+                                padding: '8px 16px',
+                                backgroundColor: '#EF4444',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '6px',
+                                cursor: 'pointer'
+                            }}
+                        >
+                            Refuser
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {msgNotification && (
+                <div 
+                    onClick={() => {
+                        setMsgNotification(null);
+                        router.push('/messages');
+                    }}
+                    style={{
+                        position: 'fixed',
+                        top: '20px',
+                        right: '20px',
+                        backgroundColor: '#3B82F6',
+                        color: 'white',
+                        padding: '16px 24px',
+                        borderRadius: '12px',
+                        boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)',
+                        zIndex: 9999,
+                        cursor: 'pointer',
+                        animation: 'slideIn 0.3s ease-out'
+                    }}
+                >
+                    <h4 style={{margin: '0 0 4px 0', fontSize:'14px'}}>Nouveau message</h4>
+                    <p style={{margin: 0, fontSize:'14px', opacity: 0.9}}>
+                        {msgNotification.content}
+                    </p>
+                </div>
+            )}
+        </>
+    );
+}

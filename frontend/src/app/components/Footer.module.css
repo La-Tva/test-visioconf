@@ -1,0 +1,72 @@
+.footer {
+    background: #0F172A;
+    /* Slate 900 - Very dark blue */
+    color: white;
+    padding: 4rem 5% 1rem;
+    font-family: 'Inter', sans-serif;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1.5fr 1fr 1fr;
+    gap: 4rem;
+    margin-bottom: 4rem;
+}
+
+.logo {
+    height: 40px;
+    margin-bottom: 1.5rem;
+}
+
+.text {
+    color: #94A3B8;
+    /* Slate 400 */
+    line-height: 1.6;
+    max-width: 300px;
+}
+
+.heading {
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 1.5rem;
+    color: white;
+}
+
+.list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.list li {
+    margin-bottom: 0.8rem;
+}
+
+.list a {
+    color: #94A3B8;
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.list a:hover {
+    color: white;
+}
+
+.bottomBar {
+    border-top: 1px solid #1E293B;
+    /* Slate 800 */
+    padding-top: 2rem;
+    text-align: center;
+    color: #64748B;
+    /* Slate 500 */
+    font-size: 0.9rem;
+}
+
+@media (max-width: 768px) {
+    .container {
+        grid-template-columns: 1fr;
+        gap: 2rem;
+    }
+}

@@ -4,9 +4,9 @@ import Sidebar from '../components/Sidebar';
 
 export default function DirectoryLayout({ children }) {
   return (
-    <div style={{ display: 'flex', width: '100%', background: '#F8FAFC' }}>
+    <div className="responsive-layout">
       <Sidebar />
-      <div style={{ flex: 1, padding: '2rem', overflowY: 'auto' }}>
+      <div className="page-content">
         {children}
       </div>
     </div>

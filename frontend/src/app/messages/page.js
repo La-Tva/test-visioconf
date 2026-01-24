@@ -17,7 +17,6 @@ export default function MessagesPage() {
     const messagesCompRef = useRef(null);
     const messagesEndRef = useRef(null);
 
-    // Scroll to bottom
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     };
@@ -25,13 +24,11 @@ export default function MessagesPage() {
 
     useEffect(() => {
         if(preloadedFriends && preloadedFriends.length > 0) {
-            console.log("MessagesPage received friends:", preloadedFriends.map(f => ({ name: f.firstname, role: f.role })));
             setFriends(preloadedFriends);
         }
     }, [preloadedFriends]);
 
     useEffect(() => {
-        // Auth check
         const userStr = localStorage.getItem('user');
         if (!userStr) {
              window.location.href = '/login';
@@ -45,8 +42,6 @@ export default function MessagesPage() {
         const msgComp = {
             nomDInstance: "MessagesComponent",
             traitementMessage: (msg) => {
-                 // Friends list is handled mostly by Preload, but if we get messages for a new friend...
-                 // Actually logic is simpler if we rely on Preload for friend list.
                  if (msg.messages) {
                      setMessages(msg.messages.messages);
                  }
@@ -57,19 +52,16 @@ export default function MessagesPage() {
                 else if (msg.friend_removed) {
                      refreshData();
                      setSelectedFriend(null);
-                     // alert('Ami retiré.'); // Removed to prevent blocking/issue
                  }
             }
         };
         messagesCompRef.current = msgComp;
         
-        // Subscribe
         controleur.inscription(msgComp, 
             ['get messages', 'send message', 'friend_removed'], 
             ['messages', 'receive_private_message']
         );
 
-        // Cleanup
         return () => {
              controleur.desincription(msgComp, 
                 ['get messages', 'send message', 'friend_removed'], 
@@ -79,7 +71,6 @@ export default function MessagesPage() {
 
     }, [controleur, isReady, refreshData]);
 
-    // Filter messages for display based on selectedFriend
     const displayedMessages = messages.filter(m => 
         selectedFriend && (
             (m.sender === currentUser?._id && m.receiver === selectedFriend._id) ||
@@ -124,34 +115,26 @@ export default function MessagesPage() {
         });
         setInputMessage('');
     };
+
     const filteredFriends = friends.filter(friend => 
         friend.firstname.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     return (
         <div className={styles.container}>
-            {/* Sidebar */}
-            <div className={styles.sidebar}>
+            <div className={`${styles.sidebar} ${selectedFriend ? styles.mobileHidden : ''}`}>
                 <div className={styles.header}>
                     <h2>Messages</h2>
                 </div>
                 
-                {/* Search Bar */}
-                <div style={{padding: '0 20px 20px 20px'}}>
+                <div className={styles.searchBarWrapper}>
+                    <svg className={styles.searchIcon} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                     <input 
                         type="text"
-                        placeholder="Rechercher..."
+                        placeholder="Rechercher une discussion..."
+                        className={styles.searchInput}
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        style={{
-                            width: '100%',
-                            padding: '10px 14px',
-                            borderRadius: '8px',
-                            border: '1px solid #E2E8F0',
-                            backgroundColor: '#F8FAFC',
-                            outline: 'none',
-                            fontSize: '14px'
-                        }}
                     />
                 </div>
 
@@ -167,91 +150,58 @@ export default function MessagesPage() {
                                 alt={friend.firstname}
                                 className={styles.avatar}
                             />
-                                <div className={styles.friendInfo}>
+                            <div className={styles.friendInfo}>
                                 <div className={styles.friendName}>
                                     {friend.firstname}
                                     {friend.role && friend.role !== 'etudiant' && (
-                                        <span style={{
-                                            fontSize:'9px', 
-                                            marginLeft:'6px',
-                                            padding:'2px 6px', 
-                                            borderRadius:'10px', 
-                                            active:'transparent',
-                                            background: friend.role === 'admin' ? '#DCFCE7' : (friend.role === 'enseignant' ? '#F3E8FF' : '#DBEAFE'),
-                                            color: friend.role === 'admin' ? '#166534' : (friend.role === 'enseignant' ? '#7E22CE' : '#1E40AF'),
-                                            fontWeight: 700,
-                                            textTransform: 'uppercase'
+                                        <span className={styles.roleBadge} style={{
+                                            background: friend.role === 'admin' ? '#DCFCE7' : '#F3E8FF',
+                                            color: friend.role === 'admin' ? '#166534' : '#7E22CE',
                                         }}>
                                             {friend.role}
                                         </span>
                                     )}
                                 </div>
                                 <div className={styles.friendStatus} style={{color: friend.is_online ? '#22C55E' : '#94A3B8'}}>
-                                    {friend.is_online ? 'En ligne' : 'Hors ligne'}
+                                    {friend.is_online ? '• En ligne' : '• Hors ligne'}
                                 </div>
                             </div>
                             {friend.unreadCount > 0 && (
-                                <div style={{
-                                    backgroundColor: '#EF4444',
-                                    color: 'white',
-                                    borderRadius: '50%',
-                                    width: '20px',
-                                    height: '20px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    fontSize: '11px',
-                                    fontWeight: 'bold',
-                                    marginLeft: 'auto'
-                                }}>
+                                <div className={styles.unreadBadge}>
                                     {friend.unreadCount}
                                 </div>
                             )}
                         </div>
                     ))}
                     {filteredFriends.length === 0 && (
-                        <div className={styles.emptyState}>Aucun ami trouvé.</div>
+                        <div className={styles.emptyState}>Aucun contact trouvé.</div>
                     )}
                 </div>
             </div>
 
-            {/* Chat Area */}
-            <div className={styles.chatArea}>
+            <div className={`${styles.chatArea} ${!selectedFriend ? styles.mobileHidden : ''}`}>
                 {selectedFriend ? (
                     <>
                         <div className={styles.chatHeader}>
+                            <button className={styles.mobileBackBtn} onClick={() => setSelectedFriend(null)}>
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                            </button>
+
                             <div className={styles.chatTitle}>
                                 <img 
-                                    src={`https://api.dicebear.com/9.x/shapes/svg?seed=${selectedFriend.firstname}`} // Fixed seed to logic
+                                    src={`https://api.dicebear.com/9.x/shapes/svg?seed=${selectedFriend.firstname}`} 
                                     className={styles.headerAvatar}
                                 />
                                 {selectedFriend.firstname}
-                                {selectedFriend.role && selectedFriend.role !== 'etudiant' && (
-                                    <span style={{
-                                        fontSize:'10px',
-                                        marginLeft: '8px', 
-                                        padding:'3px 8px', 
-                                        borderRadius:'12px', 
-                                        background: selectedFriend.role === 'admin' ? '#DCFCE7' : (selectedFriend.role === 'enseignant' ? '#F3E8FF' : '#DBEAFE'),
-                                        color: selectedFriend.role === 'admin' ? '#166534' : (selectedFriend.role === 'enseignant' ? '#7E22CE' : '#1E40AF'),
-                                        fontWeight: 700,
-                                        textTransform: 'uppercase'
-                                    }}>
-                                        {selectedFriend.role}
-                                    </span>
-                                )}
+                                <span className={styles.roleBadge} style={{
+                                    background: selectedFriend.role === 'admin' ? '#DCFCE7' : (selectedFriend.role === 'enseignant' ? '#F3E8FF' : '#DBEAFE'),
+                                    color: selectedFriend.role === 'admin' ? '#166534' : (selectedFriend.role === 'enseignant' ? '#7E22CE' : '#1E40AF'),
+                                }}>
+                                    {selectedFriend.role || 'Étudiant'}
+                                </span>
                             </div>
-                            <button 
-                                type="button" 
-                                onClick={handleRemoveFriend} 
-                                style={{
-                                    marginLeft:'auto', 
-                                    background:'#FEE2E2', color:'#EF4444', 
-                                    border:'none', padding:'6px 12px', borderRadius:'6px',
-                                    cursor:'pointer', fontSize: '0.8rem', fontWeight: '600'
-                                }}
-                            >
-                                Retirer l'ami
+                            <button type="button" onClick={handleRemoveFriend} className={styles.removeBtn}>
+                                Retirer
                             </button>
                         </div>
                         
@@ -272,22 +222,28 @@ export default function MessagesPage() {
                             <div ref={messagesEndRef} />
                         </div>
 
-                        <form className={styles.inputArea} onSubmit={handleSendMessage}>
-                            <input
-                                type="text"
-                                className={styles.messageInput}
-                                placeholder="Écrivez votre message..."
-                                value={inputMessage}
-                                onChange={(e) => setInputMessage(e.target.value)}
-                            />
-                            <button type="submit" className={styles.sendBtn}>
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-                            </button>
-                        </form>
+                        <div className={styles.inputArea}>
+                            <form className={styles.messageForm} onSubmit={handleSendMessage}>
+                                <input
+                                    type="text"
+                                    className={styles.messageInput}
+                                    placeholder="Écrivez un message..."
+                                    value={inputMessage}
+                                    onChange={(e) => setInputMessage(e.target.value)}
+                                />
+                                <button type="submit" className={styles.sendBtn}>
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                                </button>
+                            </form>
+                        </div>
                     </>
                 ) : (
                     <div className={styles.noChatSelected}>
-                        <p>Sélectionnez un ami pour commencer à discuter</p>
+                        <div className={styles.noChatIcon}>
+                            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                        </div>
+                        <p style={{fontSize:'18px', fontWeight:700, color:'#1E3664', marginBottom:8}}>Vos Conversations</p>
+                        <p style={{fontSize:'14px'}}>Sélectionnez un contact pour commencer à discuter.</p>
                     </div>
                 )}
             </div>

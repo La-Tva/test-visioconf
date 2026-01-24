@@ -1,3 +1,7 @@
+* {
+  box-sizing: border-box;
+}
+
 :root {
   /* User Defined Palette */
   --Primaire: #1E3664;
@@ -7,20 +11,26 @@
   --Accent-3: #CB0000;
   --Accent-4: #D2CCAF;
   --Texte: #060D19;
-  --Background: #F7FAFF;
-  --Texte-light: #A7A7A7;
+  --Background: #f8fafc;
+  --Texte-light: #64748B;
+  --header-height: 60px;
+
+  /* Premium Design Tokens */
+  --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --card-shadow-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --font-premium: 'Inter', var(--font-jakarta), sans-serif;
 
   /* Mapping for existing components (Aliases) */
   --background: var(--Background);
   --text-primary: var(--Texte);
   --text-secondary: var(--Texte-light);
   --primary-blue: var(--Primaire);
-  /* Legacy alias */
-  --error: var(--Accent-3);
-  --input-bg: #FFFFFF;
-  --input-border: #E2E8F0;
 }
 
+html,
 body {
   margin: 0;
   padding: 0;
@@ -28,7 +38,43 @@ body {
   font-family: var(--font-jakarta), sans-serif;
   background: var(--Background);
   color: var(--Texte);
-  min-height: 100vh;
+  height: 100%;
+  overflow: hidden;
+  /* Prevent body scroll */
+}
+
+.responsive-layout {
+  display: flex;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  background: var(--Background);
+}
+
+.page-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  /* Important for nested flex scroll */
+  overflow: hidden;
+  position: relative;
+}
+
+@media (max-width: 768px) {
+  .responsive-layout {
+    flex-direction: column;
+    height: auto;
+    min-height: 100dvh;
+    overflow: auto;
+  }
+
+  .page-content {
+    height: auto;
+    min-height: 100dvh;
+    padding-top: var(--header-height);
+  }
 }
 
 a {
@@ -58,7 +104,6 @@ a {
 
 .btn-primary:hover {
   background-color: #152648;
-  /* Darker shade of Primaire */
 }
 
 .btn-primary:disabled {
@@ -70,9 +115,9 @@ input {
   width: 100%;
   padding: 14px;
   margin: 8px 0;
-  background: var(--input-bg);
-  border: 1px solid var(--input-border);
-  border-radius: 6px;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
   color: var(--Texte);
   outline: none;
   transition: all 0.2s ease;
@@ -81,7 +126,6 @@ input {
 
 input:focus {
   border-color: var(--Secondaire);
-  background: #fff;
   box-shadow: 0 0 0 3px rgba(6, 152, 214, 0.1);
 }
 
@@ -93,4 +137,38 @@ h5,
 h6 {
   color: var(--Primaire);
   font-family: var(--font-bricolage), sans-serif;
+  letter-spacing: -0.01em;
+}
+
+/* Premium Card Utility */
+.premium-card {
+  background: white;
+  border-radius: var(--radius-lg);
+  border: 1px solid #f1f5f9;
+  box-shadow: var(--card-shadow);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.premium-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--card-shadow-hover);
+  border-color: #e2e8f0;
+}
+
+/* Premium Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }

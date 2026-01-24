@@ -19,6 +19,7 @@
     align-items: center;
     gap: 10px;
     cursor: pointer;
+    text-decoration: none;
 }
 
 .userAvatarSmall {
@@ -93,8 +94,8 @@
 }
 
 .historyText {
-    font-weight: 700;
-    color: #0F172A;
+    font-weight: 100;
+    color: #64748B;
 }
 
 /* Notifications Section */
@@ -176,4 +177,72 @@
     color: #94A3B8;
     width: 20px;
     height: 20px;
+}
+
+@media (max-width: 1024px) {
+    .dashboardGrid {
+        gap: 2rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .container {
+        padding: 1.5rem;
+        padding-top: 3.5rem;
+    }
+
+    .topHeader {
+        display: none;
+    }
+
+    .dashboardGrid {
+        grid-template-columns: 1fr;
+        gap: 2rem;
+        margin-bottom: 2.5rem;
+    }
+
+    .welcomeTitle {
+        font-size: 1.25rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .sectionTitle {
+        font-size: 0.9rem;
+        margin-bottom: 1rem;
+    }
+
+    .groupAvatar {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+    }
+
+    .groupsRow {
+        gap: 10px;
+    }
+
+    .notifHeader {
+        margin-bottom: 1rem;
+    }
+
+    .notifTitle {
+        font-size: 1rem;
+    }
+
+    .notifAvatar {
+        width: 40px;
+        height: 40px;
+    }
+
+    .notifName {
+        font-size: 0.9rem;
+    }
+
+    .notifMessage {
+        font-size: 0.8rem;
+    }
+
+    .notifItem {
+        padding: 8px 0;
+    }
 }

@@ -36,7 +36,7 @@ export default function Home() {
             nomDInstance: "HomeComponent",
             traitementMessage: (msg) => {
                 if (msg.last_messages) {
-                    setRecentConversations(msg.last_messages.conversations);
+                    setRecentConversations(msg.last_messages.conversations || []);
                 }
                 else if (msg['auth status'] && msg['auth status'].success) {
                     const updatedUser = msg['auth status'].user;
@@ -120,6 +120,7 @@ export default function Home() {
                                 src={`https://api.dicebear.com/9.x/shapes/svg?seed=group${g}`}
                                 alt="Group"
                                 className={styles.groupAvatar}
+                                onClick={() => router.push('/team')}
                             />
                         ))}
                     </div>
@@ -171,19 +172,21 @@ export default function Home() {
                                         </span>
                                     </div>
                                 </div>
-                                {conv.count > 0 && (
-                                     <div style={{
-                                        backgroundColor: '#EF4444', color: 'white', 
-                                        borderRadius: '50%', width: '20px', height: '20px', 
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        fontSize: '11px', fontWeight: 'bold', marginRight: '10px'
-                                    }}>
-                                        {conv.count}
-                                    </div>
-                                )}
-                                <svg className={styles.arrowIcon} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                                </svg>
+                                <div style={{display:'flex', alignItems:'center'}}>
+                                    {conv.count > 0 && (
+                                        <div style={{
+                                            backgroundColor: '#EF4444', color: 'white', 
+                                            borderRadius: '50%', width: '20px', height: '20px', 
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            fontSize: '11px', fontWeight: 'bold', marginRight: '10px'
+                                        }}>
+                                            {conv.count}
+                                        </div>
+                                    )}
+                                    <svg className={styles.arrowIcon} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                                    </svg>
+                                </div>
                             </div>
                         ))
                     )}

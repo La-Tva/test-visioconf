@@ -17,6 +17,7 @@ export default function TeamPage() {
     const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
     const [filter, setFilter] = useState('all'); // 'all', 'student', 'admin'
     const [searchTerm, setSearchTerm] = useState('');
+    const [showMembersList, setShowMembersList] = useState(true);
 
     // Get global users (potential team members)
     const { users } = usePreload(); 
@@ -222,7 +223,6 @@ export default function TeamPage() {
 
 
     // Filter Logic
-    // Filter Logic
     const filteredTeams = teams.filter(team => {
         const matchesSearch = team.name.toLowerCase().includes(searchTerm.toLowerCase());
         const role = team.owner?.role || 'user';
@@ -245,27 +245,29 @@ export default function TeamPage() {
         !activeTeam.members.some(m => m._id === u._id)
     ) : [];
 
-    console.log("Render TeamPage. ActiveTeam:", activeTeam?._id);
-
     if (activeTeam) {
-        console.log("Rendering Chat View for", activeTeam.name);
         const isOwner = activeTeam.owner?._id === currentUser?._id;
 
         return (
             <div className={styles.container}>
                 <div className={styles.chatContainer}>
                      <div className={styles.chatHeader}>
-                         <button onClick={() => setActiveTeam(null)} className={styles.backBtn}>← Retour</button>
+                         <button onClick={() => setActiveTeam(null)} className={styles.backBtn}>
+                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                         </button>
                          <h2 className={styles.chatTitle}>{activeTeam.name}</h2>
                          
-                         <div style={{marginRight: '15px'}}>
+                         <div className={styles.headerActions}>
+                             <button onClick={() => setShowMembersList(!showMembersList)} className={`${styles.iconBtn} ${showMembersList ? styles.activeIconBtn : ''}`} title="Voir les membres">
+                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                             </button>
                              {isOwner ? (
-                                 <button onClick={handleDeleteTeam} className={styles.deleteBtn}>
-                                     Supprimer
+                                 <button onClick={handleDeleteTeam} className={`${styles.iconBtn} ${styles.deleteIconBtn}`} title="Supprimer l'équipe">
+                                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
                                  </button>
                              ) : (
-                                 <button onClick={handleLeaveTeam} className={styles.leaveBtn}>
-                                     Quitter
+                                 <button onClick={handleLeaveTeam} className={styles.iconBtn} title="Quitter le groupe">
+                                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
                                  </button>
                              )}
                          </div>
@@ -279,18 +281,10 @@ export default function TeamPage() {
                                     return (
                                         <div key={index} className={`${styles.messageRow} ${isMe ? styles.myMessageRow : styles.friendMessageRow}`}>
                                             {!isMe && (
-                                                <div className={styles.senderName} style={{display:'flex', alignItems:'center', gap:'4px'}}>
+                                                <div className={styles.senderName}>
                                                     {msg.sender.firstname}
                                                     {msg.sender.role && msg.sender.role !== 'etudiant' && (
-                                                        <span style={{
-                                                            fontSize:'8px', 
-                                                            padding:'1px 5px', 
-                                                            borderRadius:'8px', 
-                                                            background: msg.sender.role === 'admin' ? '#DCFCE7' : (msg.sender.role === 'enseignant' ? '#F3E8FF' : '#DBEAFE'),
-                                                            color: msg.sender.role === 'admin' ? '#166534' : (msg.sender.role === 'enseignant' ? '#7E22CE' : '#1E40AF'),
-                                                            fontWeight: 700,
-                                                            textTransform: 'uppercase'
-                                                        }}>
+                                                        <span className={`${styles.roleBadge} ${styles[msg.sender.role]}`}>
                                                             {msg.sender.role}
                                                         </span>
                                                     )}
@@ -317,12 +311,13 @@ export default function TeamPage() {
                             </form>
                         </div>
 
-                        <div className={styles.membersSidebar}>
+                        <div className={`${styles.membersSidebar} ${showMembersList ? styles.showMembers : styles.hideMembers}`}>
                             <div className={styles.sidebarHeader}>
-                                <div className={styles.membersTitle} style={{margin:0}}>Membres ({activeTeam.members.length + 1})</div>
+                                <h3 className={styles.membersTitle}>Membres ({activeTeam.members.length + 1})</h3>
                                 {isOwner && (
                                     <button className={styles.addMemberBtn} onClick={() => setIsAddMemberOpen(true)}>
-                                        Ajouter
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                                        Inviter
                                     </button>
                                 )}
                             </div>
@@ -330,44 +325,32 @@ export default function TeamPage() {
                             {/* Owner */}
                             <div className={styles.memberItemSmall}>
                                 <img 
-                                    src={`https://api.dicebear.com/9.x/shapes/svg?seed=${activeTeam.owner?.firstname || 'Owner'}`} 
+                                    src={`https://api.dicebear.com/9.x/shapes/svg?seed=${activeTeam.owner?._id}`} 
                                     className={styles.avatarSmall} 
+                                    alt=""
                                 />
-                                <span style={{fontSize: '14px', fontWeight: '500'}}>{activeTeam.owner?.firstname}</span>
-                                <span className={styles.ownerBadge} style={{
-                                     background: activeTeam.owner?.role === 'admin' ? '#DCFCE7' : (activeTeam.owner?.role === 'enseignant' ? '#F3E8FF' : '#DBEAFE'),
-                                     color: activeTeam.owner?.role === 'admin' ? '#166534' : (activeTeam.owner?.role === 'enseignant' ? '#7E22CE' : '#1E40AF'),
-                                }}>{activeTeam.owner?.role || 'PROPRIO'}</span>
+                                <span style={{fontSize: '14px', fontWeight: '600', color: '#0F172A'}}>{activeTeam.owner?.firstname}</span>
+                                <span className={`${styles.ownerBadge} ${styles[activeTeam.owner?.role || 'admin']}`}>
+                                    {activeTeam.owner?.role || 'PROPRIO'}
+                                </span>
                             </div>
 
                             {/* Members */}
                             {activeTeam.members.map(m => (
                                 <div key={m._id} className={styles.memberItemSmall}>
                                     <img 
-                                        src={`https://api.dicebear.com/9.x/shapes/svg?seed=${m.firstname}`}
+                                        src={`https://api.dicebear.com/9.x/shapes/svg?seed=${m._id}`}
                                         className={styles.avatarSmall} 
+                                        alt=""
                                     />
-                                    <span style={{fontSize: '14px', fontWeight: '500'}}>{m.firstname}</span>
-                                    {m.role && m.role !== 'etudiant' && (
-                                        <span style={{
-                                            fontSize:'10px', marginLeft:'5px', padding:'2px 6px', borderRadius:'10px',
-                                            background: m.role === 'admin' ? '#DCFCE7' : (m.role === 'enseignant' ? '#F3E8FF' : '#DBEAFE'),
-                                            color: m.role === 'admin' ? '#166534' : (m.role === 'enseignant' ? '#7E22CE' : '#1E40AF'),
-                                            fontWeight: 700, textTransform: 'uppercase'
-                                        }}>
-                                            {m.role}
-                                        </span>
-                                    )}
+                                    <span style={{fontSize: '14px', fontWeight: '500', color: '#475569'}}>{m.firstname}</span>
                                     {isOwner && (
                                         <button 
                                             className={styles.removeMemberBtn} 
                                             title="Retirer le membre"
                                             onClick={() => handleRemoveMember(m._id)}
                                         >
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                <polyline points="3 6 5 6 21 6"></polyline>
-                                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2 2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                                            </svg>
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
                                         </button>
                                     )}
                                 </div>
@@ -394,7 +377,7 @@ export default function TeamPage() {
                                                     onChange={() => toggleAddMember(user._id)}
                                                 />
                                                 <img 
-                                                    src={`https://api.dicebear.com/9.x/shapes/svg?seed=${user.firstname}`}
+                                                    src={`https://api.dicebear.com/9.x/shapes/svg?seed=${user._id}`}
                                                     width="24" height="24" 
                                                     style={{borderRadius: '50%', marginRight: '10px'}}
                                                 />
@@ -421,13 +404,13 @@ export default function TeamPage() {
                 <div className={styles.header}>
                     <h1 className={styles.title}>Mes Équipes</h1>
                     <button className={styles.createBtn} onClick={() => setIsModalOpen(true)}>
-                        + Créer une équipe
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        Créer une équipe
                     </button>
                 </div>
 
                 <div className={styles.filterContainer}>
                     <div className={styles.filterActions}>
-                        <span style={{marginRight: '10px', color:'#64748B', fontSize:'14px'}}>Filtrer par créateur:</span>
                         <button 
                             className={`${styles.filterBtn} ${filter === 'all' ? styles.filterBtnActive : ''}`}
                             onClick={() => setFilter('all')}
@@ -448,13 +431,19 @@ export default function TeamPage() {
                         </button>
                     </div>
                     
-                    <input 
-                        type="text" 
-                        placeholder="Rechercher une équipe..." 
-                        className={styles.searchInput}
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                    />
+                    <div className={styles.searchWrapper}>
+                        <svg className={styles.searchIcon} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                        <input 
+                            type="text" 
+                            placeholder="Rechercher une équipe..." 
+                            className={styles.searchInput}
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
                 </div>
 
                 <div className={styles.grid}>
@@ -462,7 +451,6 @@ export default function TeamPage() {
                          const unread = team.unreadCounts && currentUser 
                                         ? (team.unreadCounts[currentUser._id] || 0) 
                                         : 0;
-                         const roleLabel = (team.owner?.role === 'admin') ? 'Admin' : 'Étudiant';
                          
                          return (
                             <div key={team._id} className={styles.teamCard} onClick={() => openTeamChat(team)}>
@@ -473,7 +461,7 @@ export default function TeamPage() {
                                             backgroundColor: '#EF4444', color: 'white', 
                                             borderRadius: '50%', width: '20px', height: '20px', 
                                             display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                            fontSize: '12px', fontWeight: 'bold'
+                                            fontSize: '11px', fontWeight: 'bold'
                                         }}>
                                             {unread}
                                         </div>
@@ -481,34 +469,25 @@ export default function TeamPage() {
                                 </div>
                                 <div className={styles.memberCount}>{team.members.length + 1} membres</div>
                                 
-                                <div style={{fontSize: '12px', color: '#64748B', marginBottom: '15px'}}>
-                                    Créé par : <span style={{fontWeight:'600'}}>{team.owner?.firstname || 'Inconnu'}</span> 
-                                    <span style={{
-                                        marginLeft: '6px', 
-                                        background: team.owner?.role === 'admin' ? '#DCFCE7' : (team.owner?.role === 'enseignant' ? '#F3E8FF' : '#DBEAFE'),
-                                        color: team.owner?.role === 'admin' ? '#166534' : (team.owner?.role === 'enseignant' ? '#7E22CE' : '#2563EB'),
-                                        padding: '2px 6px', borderRadius: '4px', fontSize:'10px', fontWeight:'700',
-                                        textTransform: 'uppercase'
-                                    }}>
-                                        {team.owner?.role || 'USER'}
-                                    </span>
-                                </div>
-
-                                <div className={styles.avatars}>
-                                    {/* Owner Avatar */}
-                                    <img 
-                                        src={`https://api.dicebear.com/9.x/shapes/svg?seed=${team.owner?.firstname || 'Owner'}`} 
-                                        className={styles.avatar} 
-                                        title={`Propriétaire: ${team.owner?.firstname}`}
-                                    />
-                                    {team.members.map(m => (
+                                <div className={styles.cardFooter}>
+                                    <div style={{fontSize: '12px', color: '#64748B'}}>
+                                        Par <span style={{fontWeight:'600'}}>{team.owner?.firstname}</span> 
+                                    </div>
+                                    <div className={styles.avatars}>
                                         <img 
-                                            key={m._id}
-                                            src={`https://api.dicebear.com/9.x/shapes/svg?seed=${m.firstname}`}
-                                            className={styles.avatar}
-                                            title={m.firstname}
+                                            src={`https://api.dicebear.com/9.x/shapes/svg?seed=${team.owner?._id}`} 
+                                            className={styles.avatar} 
+                                            alt=""
                                         />
-                                    ))}
+                                        {team.members.slice(0, 3).map(m => (
+                                            <img 
+                                                key={m._id}
+                                                src={`https://api.dicebear.com/9.x/shapes/svg?seed=${m._id}`}
+                                                className={styles.avatar}
+                                                alt=""
+                                            />
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
                         );
@@ -547,7 +526,7 @@ export default function TeamPage() {
                                             onChange={() => toggleMember(user._id)}
                                         />
                                         <img 
-                                            src={`https://api.dicebear.com/9.x/shapes/svg?seed=${user.firstname}`}
+                                            src={`https://api.dicebear.com/9.x/shapes/svg?seed=${user._id}`}
                                             width="24" height="24" 
                                             style={{borderRadius: '50%', marginRight: '10px'}}
                                         />
@@ -559,7 +538,7 @@ export default function TeamPage() {
 
                         <div className={styles.modalActions}>
                             <button className={styles.cancelBtn} onClick={() => setIsModalOpen(false)}>Annuler</button>
-                            <button className={styles.submitBtn} onClick={handleCreateTeam}>Créer</button>
+                            <button className={styles.submitBtn} onClick={handleCreateTeam}>Créer l'équipe</button>
                         </div>
                     </div>
                 </div>

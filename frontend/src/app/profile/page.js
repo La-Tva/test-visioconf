@@ -14,8 +14,6 @@ export default function ProfilePage() {
     const [status, setStatus] = useState('');
     const [showMenu, setShowMenu] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
-    
-    // For Status Change Mockup
     const [disturbStatus, setDisturbStatus] = useState('available');
 
     const controleurRef = useRef(null);
@@ -37,7 +35,6 @@ export default function ProfilePage() {
             router.push('/');
         }
 
-        // Socket init
         const ctrl = new Controleur();
         const canal = new CanalSocketio(ctrl, "SocketCanalProfile");
         controleurRef.current = ctrl;
@@ -45,7 +42,6 @@ export default function ProfilePage() {
         const profileComp = {
             nomDInstance: "ProfileComponent",
             traitementMessage: (msg) => {
-                // Update Response
                 if (msg['user_updating status']) {
                      const response = msg['user_updating status'];
                      if (response.success) {
@@ -59,16 +55,13 @@ export default function ProfilePage() {
                          setStatus("Erreur: " + response.error);
                      }
                 }
-                // Delete Response
                 if (msg.user_deleting_status) {
-                    const response = msg.user_deleting_status;
-                    if (response.success) {
+                    if (msg.user_deleting_status.success) {
                         localStorage.removeItem('user');
-                        // Redirect to Login as account is considered "gone" for this session
                         router.push('/login');
                     } else {
-                        setStatus("Erreur suppression: " + response.error);
-                        setShowDeleteModal(false); // Close modal on error
+                        setStatus("Erreur suppression: " + msg.user_deleting_status.error);
+                        setShowDeleteModal(false);
                     }
                 }
             }
@@ -83,39 +76,28 @@ export default function ProfilePage() {
 
     const handleSave = () => {
         if (!user || !newFirstname.trim()) return;
-        
         if (controleurRef.current && profileCompRef.current) {
             controleurRef.current.envoie(profileCompRef.current, {
-                'update user': {
-                    _id: user._id,
-                    firstname: newFirstname
-                }
+                'update user': { _id: user._id, firstname: newFirstname }
             });
-            setStatus("Envoi en cours...");
+            setStatus("Sauvegarde...");
         }
     };
 
     const confirmDelete = () => {
         if (controleurRef.current && profileCompRef.current) {
             controleurRef.current.envoie(profileCompRef.current, {
-                delete_user: {
-                    _id: user._id
-                }
+                delete_user: { _id: user._id }
             });
         }
     };
 
     const changeStatus = (newStatus) => {
-        // Optimistic Update
         setDisturbStatus(newStatus);
-        setShowMenu(false); // Close menu after selection
-
+        setShowMenu(false);
         if (controleurRef.current && profileCompRef.current) {
             controleurRef.current.envoie(profileCompRef.current, {
-                'update user': {
-                    _id: user._id,
-                    disturb_status: newStatus
-                }
+                'update user': { _id: user._id, disturb_status: newStatus }
             });
         }
     };
@@ -124,138 +106,59 @@ export default function ProfilePage() {
 
     return (
         <div className={styles.container}>
-            
-            {/* DELETE MODAL */}
             {showDeleteModal && (
                 <div className={styles.modalOverlay}>
                     <div className={styles.modalContent}>
-                        <div className={styles.modalIcon}>
-                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <circle cx="12" cy="12" r="10"></circle>
-                                <line x1="12" y1="8" x2="12" y2="12"></line>
-                                <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                            </svg>
-                        </div>
-                        <h2 className={styles.modalTitle}>
-                            Supprimer le compte
-                        </h2>
-                        <p className={styles.modalText}>
-                            Êtes-vous sûr de vouloir supprimer définitivement votre compte ? 
-                            Cette action est irréversible et toutes vos données seront perdues.
+                        <div style={{fontSize: '48px', marginBottom: '16px'}}>⚠️</div>
+                        <h2 style={{color: '#1E3664', fontWeight: 800, marginBottom: '12px'}}>Supprimer le compte</h2>
+                        <p style={{color: '#64748B', fontSize: '14px', lineHeight: 1.6, marginBottom: '32px'}}>
+                            Cette action est irréversible. Toutes vos données seront définitivement perdues.
                         </p>
-                        <div className={styles.modalActions}>
-                            <button 
-                                className={styles.modalBtnSecondary} 
-                                onClick={() => setShowDeleteModal(false)}
-                            >
-                                Annuler
-                            </button>
-                            <button 
-                                className={styles.modalBtnDanger} 
-                                onClick={confirmDelete}
-                            >
-                                Supprimer l’utilisateur
-                            </button>
+                        <div style={{display:'flex', gap:'12px'}}>
+                            <button className={styles.cancelBtn} style={{flex:1}} onClick={() => setShowDeleteModal(false)}>Fermer</button>
+                            <button className={styles.saveBtn} style={{flex:1, background: '#EF4444'}} onClick={confirmDelete}>Supprimer</button>
                         </div>
                     </div>
                 </div>
             )}
 
-
             <div className={styles.card}>
-                
-                {/* Banner Image (Abstract Style) */}
-                <div 
-                    className={styles.banner}
-                    style={{
-                        backgroundImage: `url(https://api.dicebear.com/9.x/shapes/svg?seed=${user._id})`
-                    }}
-                ></div>
-
+                <div className={styles.banner} style={{ backgroundImage: `url(https://api.dicebear.com/9.x/shapes/svg?seed=${user._id})` }}></div>
                 <div className={styles.content}>
-                    
-                    {/* Header Row: Avatar & Actions */}
                     <div className={styles.headerRow}>
                         <div className={styles.avatarContainer}>
-                            {/* Abstract Avatar */}
-                            <img 
-                                src={`https://api.dicebear.com/9.x/shapes/svg?seed=${user._id}`} 
-                                alt="Avatar" 
-                                className={styles.avatar} 
-                                style={{objectFit: 'cover', padding: 0, overflow: 'hidden'}}
-                            />    
-                            {/* Online Indicator (If user is here, they are online) */}
-                            <div className={styles.onlineIndicator} title="En ligne"></div>
-                            
-                            {/* Edit Button on Avatar */}
-                            <button 
-                                className={styles.editIconBtn} 
-                                onClick={() => setIsEditing(!isEditing)}
-                                title="Modifier le nom"
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
-                                </svg>
+                            <img src={`https://api.dicebear.com/9.x/shapes/svg?seed=${user._id}`} alt="Avatar" className={styles.avatar} />
+                            <div className={styles.onlineIndicator} style={{
+                                backgroundColor: user.disturb_status === 'dnd' ? '#EF4444' : (user.disturb_status === 'away' ? '#F97316' : '#22C55E')
+                            }}></div>
+                            <button className={styles.editIconBtn} onClick={() => setIsEditing(!isEditing)}>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
                             </button>
                         </div>
 
-                        <div className={styles.topActions}>
-                            {/* Three dots 'More' action */}
-                            <button 
-                                className={styles.moreBtn}
-                                onClick={() => setShowMenu(!showMenu)}
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <circle cx="12" cy="12" r="1"></circle>
-                                    <circle cx="12" cy="5" r="1"></circle>
-                                    <circle cx="12" cy="19" r="1"></circle>
-                                </svg>
+                        <div style={{position:'relative'}}>
+                            <button className={styles.moreBtn} onClick={() => setShowMenu(!showMenu)}>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="1.5"></circle><circle cx="12" cy="5" r="1.5"></circle><circle cx="12" cy="19" r="1.5"></circle></svg>
                             </button>
-
-                            {/* Dropdown Menu */}
                             {showMenu && (
-                                <div className={styles.dropdownMenu} onMouseLeave={() => setShowMenu(false)}>
-                                    <div className={styles.dropdownHeader}>Définir le statut</div>
-                                    
+                                <div className={styles.dropdownMenu}>
+                                    <div style={{fontSize: '11px', fontWeight: 800, color: '#94A3B8', padding: '8px 12px', textTransform: 'uppercase'}}>Mon Statut</div>
                                     <button className={styles.dropdownItem} onClick={() => changeStatus('available')}>
-                                        <span style={{width:10, height:10, borderRadius:'50%', background:'#22C55E'}}></span>
-                                        Disponible
+                                        <span style={{width:8, height:8, borderRadius:'50%', background:'#22C55E'}}></span> Disponible
                                     </button>
                                     <button className={styles.dropdownItem} onClick={() => changeStatus('dnd')}>
-                                        <span style={{width:10, height:10, borderRadius:'50%', background:'#EF4444'}}></span>
-                                        Occupé
+                                        <span style={{width:8, height:8, borderRadius:'50%', background:'#EF4444'}}></span> Occupé
                                     </button>
                                     <button className={styles.dropdownItem} onClick={() => changeStatus('away')}>
-                                        <span style={{width:10, height:10, borderRadius:'50%', background:'#F97316'}}></span>
-                                        Absent
+                                        <span style={{width:8, height:8, borderRadius:'50%', background:'#F97316'}}></span> Absent
                                     </button>
-
-                                    <div className={styles.separator}></div>
-
-                                    <button 
-                                        className={styles.dropdownItem} 
-                                        onClick={() => {
-                                            localStorage.removeItem('user');
-                                            router.push('/login');
-                                        }}
-                                    >
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                                            <polyline points="16 17 21 12 16 7"></polyline>
-                                            <line x1="21" y1="12" x2="9" y2="12"></line>
-                                        </svg>
+                                    <div style={{height: 1, background: '#F1F5F9', margin: '4px 0'}}></div>
+                                    <button className={styles.dropdownItem} onClick={() => { localStorage.removeItem('user'); router.push('/login'); }}>
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
                                         Se déconnecter
                                     </button>
-                                    <button 
-                                        className={`${styles.dropdownItem} ${styles.danger}`} 
-                                        onClick={() => {
-                                            setShowMenu(false);
-                                            setShowDeleteModal(true);
-                                        }}
-                                    >
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                            <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
-                                        </svg>
+                                    <button className={`${styles.dropdownItem} ${styles.danger}`} onClick={() => { setShowMenu(false); setShowDeleteModal(true); }}>
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                                         Supprimer le profil
                                     </button>
                                 </div>
@@ -263,60 +166,38 @@ export default function ProfilePage() {
                         </div>
                     </div>
 
-                    {/* Main Info */}
                     <div className={styles.mainInfo}>
-                        <div className={styles.nameSection}>
-                            {isEditing ? (
-                                <div>
-                                    <input 
-                                        type="text" 
-                                        className={styles.editInput}
-                                        value={newFirstname}
-                                        onChange={(e) => setNewFirstname(e.target.value)}
-                                    />
-                                    <div style={{display:'flex'}}>
-                                        <button onClick={handleSave} className={styles.saveBtn}>Enregistrer</button>
-                                        <button onClick={() => {
-                                            setIsEditing(false);
-                                            setNewFirstname(user.firstname);
-                                        }} className={styles.cancelBtn}>Annuler</button>
-                                    </div>
+                        {isEditing ? (
+                            <div>
+                                <input type="text" className={styles.editInput} value={newFirstname} onChange={(e) => setNewFirstname(e.target.value)} autoFocus />
+                                <div style={{display:'flex'}}>
+                                    <button onClick={handleSave} className={styles.saveBtn}>Confirmer</button>
+                                    <button onClick={() => { setIsEditing(false); setNewFirstname(user.firstname); }} className={styles.cancelBtn}>Annuler</button>
                                 </div>
-                            ) : (
-                                <h1 className={styles.nameValue}>
-                                    {user.firstname}
-                                </h1>
-                            )}
-                        </div>
+                            </div>
+                        ) : (
+                            <h1 className={styles.nameValue}>{user.firstname}</h1>
+                        )}
                         <p className={styles.emailValue}>{user.email}</p>
-                        {status && <p style={{color: status.includes('Erreur') ? 'red' : 'green', fontSize: '0.9rem', marginTop: '5px'}}>{status}</p>}
+                        {status && <p style={{color: '#0698D6', fontSize: '12px', fontWeight: 700, marginTop: '8px'}}>{status}</p>}
                     </div>
 
-                    {/* Details Grid */}
                     <div className={styles.detailsGrid}>
-                         
-                         {/* Role Badge */}
                          <div className={styles.detailItem}>
+                             <span className={styles.label}>Niveau d'accès</span>
                              <div className={`${styles.badge} ${styles[user.role?.toLowerCase() || 'etudiant']}`}>
-                                 {user.role || 'Admin'}
+                                 {user.role || 'Étudiant'}
                              </div>
                          </div>
-
-                         {/* Phone Number */}
                          <div className={styles.detailItem}>
-                             <span className={styles.label}>Téléphone</span>
+                             <span className={styles.label}>Coordonnées</span>
                              <span className={styles.value}>{user.phone || 'Non renseigné'}</span>
                          </div>
-
                     </div>
 
-                    {/* Footer / Back */}
                     <div className={styles.footerActions}>
-                        <Link href="/home" className={styles.backBtn}>
-                            Retour à l'accueil
-                        </Link>
+                        <Link href="/home" className={styles.backBtn}>← Retour à l'accueil</Link>
                     </div>
-
                 </div>
             </div>
         </div>

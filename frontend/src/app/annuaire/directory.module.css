@@ -1,42 +1,75 @@
 .container {
-    max-width: 1200px;
+    padding: 40px;
+    max-width: 1400px;
     margin: 0 auto;
-    font-family: var(--font-jakarta), sans-serif;
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
 .header {
-    margin-bottom: 2rem;
+    margin-bottom: 32px;
+    text-align: left;
 }
 
 .title {
-    font-family: var(--font-bricolage), sans-serif;
-    font-size: 2rem;
+    font-size: 26px;
     font-weight: 800;
-    color: #0F172A;
-    margin-bottom: 0.5rem;
+    color: #1E3664;
+    letter-spacing: -0.02em;
+    margin-bottom: 8px;
 }
 
 .subtitle {
     color: #64748B;
-    font-size: 1rem;
+    font-size: 15px;
 }
 
-.controls {
+.filterContainer {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 16px;
-    margin-bottom: 2rem;
-    flex-wrap: wrap;
+    margin-bottom: 32px;
+    background: white;
+    padding: 12px 16px;
+    border-radius: 16px;
+    border: 1px solid #F1F5F9;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+}
+
+.filterActions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.filterBtn {
+    background: transparent;
+    border: 1px solid transparent;
+    padding: 8px 18px;
+    border-radius: 10px;
+    color: #64748B;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.filterBtnActive {
+    background: #2563EB;
+    color: white;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+}
+
+.filterBtn:not(.filterBtnActive):hover {
+    background: #F1F5F9;
+    color: #1E3664;
 }
 
 .searchWrapper {
     position: relative;
-    width: 100%;
-    min-width: 250px;
-    max-width: 400px;
-    z-index: 2;
-    /* Ensure it stays above if needed, but layout should fix it */
+    width: 320px;
 }
 
 .searchIcon {
@@ -45,54 +78,55 @@
     top: 50%;
     transform: translateY(-50%);
     color: #94A3B8;
+    pointer-events: none;
 }
 
 .searchInput {
     width: 100%;
-    padding: 12px 16px 12px 40px;
-    border: 1px solid #E2E8F0;
-    border-radius: 12px;
-    font-size: 0.95rem;
+    padding: 10px 16px 10px 42px;
+    border: 1px solid #F1F5F9;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 500;
     outline: none;
-    transition: border-color 0.2s;
+    background: #F8FAFC;
+    transition: all 0.2s;
+    color: #1E3664;
+}
+
+.searchInput::placeholder {
+    color: #94A3B8;
 }
 
 .searchInput:focus {
-    border-color: #3B82F6;
+    border-color: #2563EB;
+    background: white;
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.05);
 }
 
-.filterSelect {
-    padding: 12px 24px;
-    border: 1px solid #E2E8F0;
-    border-radius: 12px;
-    background: white;
-    font-size: 0.95rem;
-    outline: none;
-    cursor: pointer;
-    min-width: 150px;
-}
 
 .grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 24px;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 32px;
 }
 
 .card {
-    background: white;
+    background: #FFFFFF;
     border-radius: 20px;
-    padding: 24px;
+    padding: 20px;
     display: flex;
     flex-direction: column;
     align-items: center;
-    border: 1px solid #E2E8F0;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-    transition: transform 0.2s, box-shadow 0.2s;
+    border: 1px solid #F1F5F9;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .card:hover {
     transform: translateY(-4px);
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.04);
+    border-color: #CBD5E1;
 }
 
 .avatarWrapper {
@@ -103,59 +137,58 @@
 .avatar {
     width: 80px;
     height: 80px;
-    border-radius: 50%;
+    border-radius: 24px;
     object-fit: cover;
     background: #F1F5F9;
 }
 
 .statusDot {
     position: absolute;
-    bottom: 2px;
-    right: 2px;
-    width: 16px;
-    height: 16px;
+    bottom: -4px;
+    right: -4px;
+    width: 18px;
+    height: 18px;
     border-radius: 50%;
-    border: 3px solid white;
+    border: 3px solid #FFFFFF;
 }
 
 .info {
     text-align: center;
-    width: 100%;
+    margin-bottom: 20px;
 }
 
 .name {
-    font-weight: 700;
-    font-size: 1.1rem;
+    font-weight: 750;
+    font-size: 17px;
     color: #0F172A;
     margin-bottom: 4px;
 }
 
 .email {
     color: #64748B;
-    font-size: 0.9rem;
+    font-size: 13px;
     margin-bottom: 12px;
     word-break: break-all;
 }
 
 .roleBadge {
     display: inline-block;
-    padding: 4px 12px;
-    border-radius: 20px;
-    font-size: 0.75rem;
-    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 8px;
+    font-size: 10px;
+    font-weight: 800;
     text-transform: uppercase;
-    margin-bottom: 16px;
+    letter-spacing: 0.05em;
 }
 
 .admin {
     background: #DCFCE7;
-    color: #166534;
+    color: #15803D;
 }
 
-.user,
 .etudiant {
     background: #DBEAFE;
-    color: #1E40AF;
+    color: #1D4ED8;
 }
 
 .enseignant {
@@ -166,22 +199,151 @@
 .actions {
     margin-top: auto;
     width: 100%;
-    display: flex;
-    justify-content: center;
 }
 
 .contactBtn {
-    background: #0F172A;
+    width: 100%;
+    background: #1E3664;
     color: white;
     border: none;
-    padding: 8px 24px;
-    border-radius: 20px;
-    font-weight: 600;
-    font-size: 0.85rem;
+    padding: 12px;
+    border-radius: 14px;
+    font-weight: 800;
+    font-size: 13px;
     cursor: pointer;
-    transition: background 0.2s;
+    transition: all 0.2s;
 }
 
-.contactBtn:hover {
-    background: #334155;
+.contactBtn:hover:not(:disabled) {
+    background: #1E293B;
+    transform: scale(1.02);
+}
+
+.contactBtn:disabled {
+    background: #F1F5F9;
+    color: #94A3B8;
+    cursor: not-allowed;
+}
+
+/* Mobile AT THE BOTTOM */
+@media (max-width: 768px) {
+    .container {
+        padding: 1.5rem !important;
+        padding-top: 3.5rem !important;
+    }
+
+    .header {
+        margin-bottom: 20px;
+    }
+
+    .title {
+        font-size: 1.25rem;
+        margin-bottom: 4px;
+    }
+
+    .subtitle {
+        font-size: 0.8rem;
+    }
+
+    .filterContainer {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+        padding: 12px;
+        border-radius: 12px;
+        margin-bottom: 24px;
+    }
+
+    .filterActions {
+        overflow-x: auto;
+        padding-bottom: 4px;
+        gap: 6px;
+    }
+
+    .filterActions::-webkit-scrollbar {
+        display: none;
+    }
+
+    .filterBtn {
+        padding: 6px 12px;
+        font-size: 12px;
+        white-space: nowrap;
+    }
+
+    .searchWrapper {
+        width: 100%;
+    }
+
+    .searchInput {
+        font-size: 13px;
+        padding: 8px 12px 8px 36px;
+    }
+
+    .searchIcon {
+        left: 12px;
+        width: 14px;
+        height: 14px;
+    }
+
+    .grid {
+        gap: 10px;
+        grid-template-columns: 1fr;
+    }
+
+    .card {
+        padding: 12px;
+        border-radius: 14px;
+        flex-direction: row;
+        align-items: center;
+        gap: 12px;
+        text-align: left;
+    }
+
+    .avatarWrapper {
+        margin-bottom: 0;
+    }
+
+    .avatar {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+    }
+
+    .statusDot {
+        width: 12px;
+        height: 12px;
+        border-width: 2px;
+    }
+
+    .info {
+        text-align: left;
+        margin-bottom: 0;
+        flex: 1;
+    }
+
+    .name {
+        font-size: 0.9rem;
+        margin-bottom: 0;
+    }
+
+    .email {
+        font-size: 0.75rem;
+        margin-bottom: 2px;
+    }
+
+    .roleBadge {
+        padding: 2px 6px;
+        font-size: 8px;
+    }
+
+    .actions {
+        width: auto;
+        margin-top: 0;
+    }
+
+    .contactBtn {
+        padding: 6px 12px;
+        font-size: 11px;
+        border-radius: 10px;
+    }
 }

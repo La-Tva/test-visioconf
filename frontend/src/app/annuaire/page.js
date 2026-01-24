@@ -14,12 +14,11 @@ export default function DirectoryPage() {
     useEffect(() => {
         const u = localStorage.getItem('user');
         if(u) {
-            console.log("Annuaire loaded user from storage:", JSON.parse(u));
             setCurrentUser(JSON.parse(u));
         }
     }, []);
 
-    const { users: preloadedUsers, loading, refreshData } = usePreload();
+    const { users: preloadedUsers, refreshData } = usePreload();
     const { controleur, isReady } = useSocket();
     const directoryCompRef = useRef(null);
 
@@ -30,16 +29,14 @@ export default function DirectoryPage() {
         }
     }, [preloadedUsers]);
     
-    // Cleanup or additional listeners if needed (e.g. for friend_removed)
     useEffect(() => {
         if (!controleur || !isReady) return;
         
         const dirComp = {
             nomDInstance: "DirectoryComponent",
             traitementMessage: (msg) => {
-                 // We can rely on PreloadContext for updates, or handle specific events here
                  if (msg.friend_removed) {
-                     refreshData(); // Trigger global refresh
+                     refreshData();
                      alert('Ami retiré.');
                  }
             }
@@ -49,11 +46,9 @@ export default function DirectoryPage() {
         
     }, [controleur, isReady, refreshData]);
 
-    // Filter Logic
     useEffect(() => {
         let result = users || [];
 
-        // Search
         if (searchTerm) {
             result = result.filter(u => 
                 u.firstname.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -61,7 +56,6 @@ export default function DirectoryPage() {
             );
         }
 
-        // Role & Friends Filter
         if (roleFilter === 'friends') {
             const me = users.find(u => u._id === currentUser?._id);
             const myFriends = me?.friends || [];
@@ -71,19 +65,51 @@ export default function DirectoryPage() {
         }
 
         setFilteredUsers(result);
-    }, [searchTerm, roleFilter, users]);
+    }, [searchTerm, roleFilter, users, currentUser]);
 
     return (
         <div className={styles.container}>
             <div className={styles.header}>
                 <h1 className={styles.title}>Annuaire</h1>
-                <p className={styles.subtitle}>Retrouvez tous les membres de l'équipe.</p>
+                <p className={styles.subtitle}>Retrouvez tous les membres de la plateforme.</p>
             </div>
 
-            <div className={styles.controls}>
-                {/* Search */}
+            <div className={styles.filterContainer}>
+                <div className={styles.filterActions}>
+                    <button 
+                        className={`${styles.filterBtn} ${roleFilter === 'all' ? styles.filterBtnActive : ''}`}
+                        onClick={() => setRoleFilter('all')}
+                    >
+                        Tous
+                    </button>
+                    <button 
+                        className={`${styles.filterBtn} ${roleFilter === 'friends' ? styles.filterBtnActive : ''}`}
+                        onClick={() => setRoleFilter('friends')}
+                    >
+                        Amis
+                    </button>
+                    <button 
+                        className={`${styles.filterBtn} ${roleFilter === 'etudiant' ? styles.filterBtnActive : ''}`}
+                        onClick={() => setRoleFilter('etudiant')}
+                    >
+                        Étudiants
+                    </button>
+                    <button 
+                        className={`${styles.filterBtn} ${roleFilter === 'enseignant' ? styles.filterBtnActive : ''}`}
+                        onClick={() => setRoleFilter('enseignant')}
+                    >
+                        Enseignants
+                    </button>
+                    <button 
+                        className={`${styles.filterBtn} ${roleFilter === 'admin' ? styles.filterBtnActive : ''}`}
+                        onClick={() => setRoleFilter('admin')}
+                    >
+                        Admins
+                    </button>
+                </div>
+
                 <div className={styles.searchWrapper}>
-                    <svg className={styles.searchIcon} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                    <svg className={styles.searchIcon} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                     <input 
                         type="text" 
                         placeholder="Rechercher par nom ou email..." 
@@ -92,24 +118,11 @@ export default function DirectoryPage() {
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
                 </div>
-
-                <select 
-                    className={styles.filterSelect}
-                    value={roleFilter}
-                    onChange={(e) => setRoleFilter(e.target.value)}
-                >
-                    <option value="all">Tous les rôles</option>
-                    <option value="friends">Mes Amis</option>
-                    <option value="etudiant">Étudiant</option>
-                    <option value="enseignant">Enseignant</option>
-                    <option value="admin">Administrateur</option>
-                </select>
             </div>
 
             <div className={styles.grid}>
                 {filteredUsers.map(u => {
-                    const isMe = currentUser && currentUser._id === u._id;
-                    // console.log(`Rendering user ${u.firstname} (${u._id}). CurrentUser: ${currentUser?._id}. IsMe: ${isMe}`);
+                    const isFriend = users.find(me => me._id === currentUser?._id)?.friends?.includes(u._id);
                     return (
                     <div key={u._id} className={styles.card}>
                         <div className={styles.avatarWrapper}>
@@ -122,9 +135,9 @@ export default function DirectoryPage() {
                                 className={styles.statusDot}
                                 style={{
                                     backgroundColor: u.disturb_status === 'dnd' ? '#EF4444' : 
-                                            (u.disturb_status === 'away' ? '#F97316' : '#22C55E')
+                                            (u.disturb_status === 'away' ? '#F97316' : '#22C55E'),
+                                    opacity: u.is_online ? 1 : 0.3
                                 }}
-                                title={!u.is_online ? 'Hors ligne' : u.disturb_status}
                             ></div>
                         </div>
                         
@@ -140,60 +153,31 @@ export default function DirectoryPage() {
                         <div className={styles.actions}>
                             <button 
                                 className={styles.contactBtn}
-                                disabled={
-                                    (currentUser && currentUser._id === u._id)
-                                }
-                                style={
-                                    ((currentUser && currentUser._id === u._id)) 
-                                    ? { opacity: 0.5, cursor: 'not-allowed', backgroundColor: '#94A3B8' } : 
-                                    (users.find(me => me._id === currentUser?._id)?.friends?.includes(u._id))
-                                    ? { backgroundColor: '#EF4444' } : {}
-                                }
+                                disabled={currentUser && currentUser._id === u._id}
+                                style={currentUser && currentUser._id === u._id ? { backgroundColor: '#CBD5E1', color: 'white' } : (isFriend ? { backgroundColor: '#FF4D4D', color: 'white' } : {})}
                                 onClick={() => {
-                                    const userStr = localStorage.getItem('user');
-                                    if(userStr && controleur && directoryCompRef.current) {
-                                        const me = JSON.parse(userStr);
-                                        // Basic check to avoid self-request (UI should handle this too)
-                                        if(me._id === u._id) return;
-                                        
-                                        const isFriend = users.find(meUser => meUser._id === me._id)?.friends?.includes(u._id);
-
+                                    if(controleur && directoryCompRef.current) {
                                         if (isFriend) {
-                                            if(confirm('Voulez-vous retirer cet ami ?')) {
+                                            if(confirm('Retirer cet ami ?')) {
                                                 controleur.envoie(directoryCompRef.current, {
-                                                    remove_friend: {
-                                                        userId: me._id,
-                                                        friendId: u._id
-                                                    }
+                                                    remove_friend: { userId: currentUser._id, friendId: u._id }
                                                 });
                                             }
                                         } else {
                                             controleur.envoie(directoryCompRef.current, {
-                                                friend_request: {
-                                                    fromUserId: me._id,
-                                                    toUserId: u._id
-                                                }
+                                                friend_request: { fromUserId: currentUser._id, toUserId: u._id }
                                             });
                                             alert('Demande envoyée !'); 
                                         }
                                     }
                                 }}
                             >
-                                {
-                                    currentUser && currentUser._id === u._id ? 'Vous' : 
-                                    (users.find(me => me._id === currentUser?._id)?.friends?.includes(u._id) ? 'Retirer l\'ami' : 'Contacter')
-                                }
+                                {currentUser && currentUser._id === u._id ? 'Vous' : (isFriend ? "Retirer l'ami" : 'Contacter')}
                             </button>
                         </div>
                     </div>
                     );
                 })}
-
-                {filteredUsers.length === 0 && (
-                    <div style={{gridColumn: '1/-1', textAlign:'center', padding:'2rem', color:'#64748B'}}>
-                        Aucun utilisateur trouvé.
-                    </div>
-                )}
             </div>
         </div>
     );

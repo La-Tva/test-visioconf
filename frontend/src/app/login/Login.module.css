@@ -282,8 +282,21 @@
 }
 
 @media (max-width: 1024px) {
+    .container {
+        position: relative;
+        inset: auto;
+        min-height: 100vh;
+        height: auto;
+        overflow-y: auto;
+        display: flex;
+        align-items: flex-start;
+        /* Start from top on mobile */
+        padding: 40px 20px;
+    }
+
     .card {
         max-width: 500px;
+        min-height: auto;
     }
 
     .rightSide {

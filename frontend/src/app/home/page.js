@@ -9,6 +9,7 @@ export default function Home() {
     const router = useRouter();
     const [user, setUser] = useState(null);
     const [recentConversations, setRecentConversations] = useState([]);
+    const [teams, setTeams] = useState([]);
     
     // Use Socket
     const { controleur, isReady } = useSocket();
@@ -38,6 +39,9 @@ export default function Home() {
                 if (msg.last_messages) {
                     setRecentConversations(msg.last_messages.conversations || []);
                 }
+                else if (msg.teams) {
+                    setTeams(msg.teams.teams || []);
+                }
                 else if (msg['auth status'] && msg['auth status'].success) {
                     const updatedUser = msg['auth status'].user;
                     setUser(updatedUser);
@@ -58,17 +62,18 @@ export default function Home() {
         };
 
         controleur.inscription(homeComp, 
-            ['get_last_messages'], 
-            ['last_messages', 'receive_private_message', 'receive_team_message', 'auth status', 'user_updating status']
+            ['get_last_messages', 'get teams'], 
+            ['last_messages', 'receive_private_message', 'receive_team_message', 'auth status', 'user_updating status', 'teams']
         );
         
         // Initial Fetch
         controleur.envoie(homeComp, { get_last_messages: { userId: user._id } });
+        controleur.envoie(homeComp, { 'get teams': { userId: user._id } });
 
         return () => {
              controleur.desincription(homeComp, 
-                ['get_last_messages'], 
-                ['last_messages', 'receive_private_message', 'receive_team_message', 'auth status', 'user_updating status']
+                ['get_last_messages', 'get teams'], 
+                ['last_messages', 'receive_private_message', 'receive_team_message', 'auth status', 'user_updating status', 'teams']
             );
         };
     }, [user, controleur, isReady]);
@@ -114,15 +119,20 @@ export default function Home() {
                 <div>
                     <h2 className={styles.sectionTitle}>Vos groupes :</h2>
                     <div className={styles.groupsRow}>
-                        {groups.map((g) => (
-                            <img 
-                                key={g}
-                                src={`https://api.dicebear.com/9.x/shapes/svg?seed=group${g}`}
-                                alt="Group"
-                                className={styles.groupAvatar}
-                                onClick={() => router.push('/team')}
-                            />
-                        ))}
+                        {teams.length > 0 ? (
+                            teams.map((team) => (
+                                <div key={team._id} className={styles.groupItem} onClick={() => router.push('/team')}>
+                                    <img 
+                                        src={`https://api.dicebear.com/9.x/shapes/svg?seed=${team.name}`}
+                                        alt={team.name}
+                                        className={styles.groupAvatar}
+                                    />
+                                    <span className={styles.groupName}>{team.name}</span>
+                                </div>
+                            ))
+                        ) : (
+                            <p style={{color:'#94A3B8', fontSize:'14px'}}>Aucun groupe rejoint.</p>
+                        )}
                     </div>
                 </div>
 

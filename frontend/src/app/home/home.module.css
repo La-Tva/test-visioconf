@@ -62,22 +62,47 @@
 /* Groups */
 .groupsRow {
     display: flex;
-    gap: 15px;
+    gap: 20px;
+    overflow-x: auto;
+    padding-bottom: 10px;
+    scrollbar-width: none;
+}
+
+.groupsRow::-webkit-scrollbar {
+    display: none;
+}
+
+.groupItem {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: transform 0.2s;
+    min-width: 70px;
+}
+
+.groupItem:hover {
+    transform: translateY(-3px);
 }
 
 .groupAvatar {
     width: 60px;
     height: 60px;
-    border-radius: 16px;
-    /* Squaricle shape */
-    background-color: #E2E8F0;
+    border-radius: 18px;
+    background-color: #F1F5F9;
     object-fit: cover;
-    transition: transform 0.2s;
-    cursor: pointer;
 }
 
-.groupAvatar:hover {
-    transform: translateY(-3px);
+.groupName {
+    font-size: 11px;
+    font-weight: 700;
+    color: #64748B;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 80px;
 }
 
 /* History */

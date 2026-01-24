@@ -4,24 +4,26 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: var(--Background);
+    background: radial-gradient(circle at top right, #F8FAFC 0%, #E2E8F0 100%);
     padding: 20px;
-    font-family: var(--font-premium);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
 .card {
     display: flex;
     width: 100%;
     max-width: 1100px;
-    background: #FFFFFF;
-    border-radius: var(--radius-xl);
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+    min-height: 650px;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-radius: 32px;
+    box-shadow: 0 40px 100px -20px rgba(0, 0, 0, 0.15);
     overflow: hidden;
-    border: 1px solid #F1F5F9;
+    border: 1px solid rgba(255, 255, 255, 0.5);
 }
 
 .leftSide {
-    flex: 1;
+    flex: 1.2;
     padding: 60px 80px;
     display: flex;
     flex-direction: column;
@@ -29,16 +31,17 @@
 }
 
 .logo {
-    height: 32px;
+    height: 36px;
     margin-bottom: 48px;
+    width: auto;
 }
 
 .welcomeText {
-    font-size: 32px;
-    font-weight: 800;
-    color: var(--Texte);
+    font-size: 36px;
+    font-weight: 850;
+    color: #1E3664;
     margin-bottom: 40px;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.03em;
 }
 
 .form {
@@ -47,33 +50,58 @@
     gap: 20px;
 }
 
+.inputWrapper {
+    position: relative;
+    width: 100%;
+}
+
+.inputIcon {
+    position: absolute;
+    left: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94A3B8;
+    pointer-events: none;
+    transition: color 0.2s;
+}
+
 .input,
 .inputWithIcon {
     width: 100%;
-    padding: 16px 20px;
-    border-radius: 14px;
-    border: 1.5px solid #E2E8F0;
+    padding: 16px 20px 16px 52px;
+    border-radius: 16px;
+    border: 1.5px solid #F1F5F9;
     background: #F8FAFC;
     font-size: 15px;
-    font-weight: 500;
+    font-weight: 600;
     outline: none;
-    transition: all 0.2s;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    color: #0F172A;
 }
 
 .input:focus,
 .inputWithIcon:focus {
-    border-color: var(--Secondaire);
+    border-color: #2563EB;
     background: #FFFFFF;
-    box-shadow: 0 0 0 4px rgba(6, 152, 214, 0.05);
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+}
+
+.inputWrapper:focus-within .inputIcon {
+    color: #2563EB;
 }
 
 .eyeIcon {
     position: absolute;
-    right: 16px;
+    right: 20px;
     top: 50%;
     transform: translateY(-50%);
     color: #94A3B8;
     cursor: pointer;
+    transition: color 0.2s;
+}
+
+.eyeIcon:hover {
+    color: #1E3664;
 }
 
 .optionsRow {
@@ -85,65 +113,172 @@
 
 .rememberMe {
     font-size: 14px;
-    font-weight: 600;
+    font-weight: 700;
     color: #64748B;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
+    cursor: pointer;
+}
+
+.rememberMe input {
+    width: 18px;
+    height: 18px;
+    border-radius: 6px;
+    border: 2px solid #E2E8F0;
+    cursor: pointer;
 }
 
 .forgotPassword {
     font-size: 14px;
-    font-weight: 700;
-    color: #1E3664;
+    font-weight: 800;
+    color: #2563EB;
     text-decoration: none;
+    transition: color 0.2s;
+}
+
+.forgotPassword:hover {
+    color: #1E3664;
 }
 
 .loginButton {
-    background: var(--Primaire);
+    background: #1E3664;
     color: #FFFFFF;
-    padding: 16px;
-    border-radius: 14px;
+    padding: 18px;
+    border-radius: 18px;
     font-size: 16px;
     font-weight: 800;
     border: none;
     cursor: pointer;
     margin-top: 12px;
-    transition: all 0.2s;
+    transition: all 0.3s;
+    box-shadow: 0 10px 20px -5px rgba(30, 54, 100, 0.3);
 }
 
 .loginButton:hover {
-    background: var(--Secondaire);
+    background: #2563EB;
     transform: translateY(-2px);
+    box-shadow: 0 15px 30px -10px rgba(37, 99, 235, 0.4);
 }
 
 .signupText {
-    margin-top: 32px;
+    margin-top: 36px;
     text-align: center;
-    font-size: 14px;
+    font-size: 15px;
+    font-weight: 600;
     color: #64748B;
 }
 
 .signupLink {
-    color: #1E3664;
-    font-weight: 800;
+    color: #2563EB;
+    font-weight: 850;
     margin-left: 6px;
+    cursor: pointer;
     text-decoration: none;
+}
+
+.divider {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    margin: 32px 0;
+    font-size: 12px;
+    font-weight: 800;
+    color: #CBD5E1;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+
+.divider::before,
+.divider::after {
+    content: '';
+    flex: 1;
+    border-bottom: 1px solid #F1F5F9;
+}
+
+.divider::before {
+    margin-right: 16px;
+}
+
+.divider::after {
+    margin-left: 16px;
+}
+
+.ssoButton {
+    width: 100%;
+    padding: 16px;
+    border-radius: 16px;
+    border: 1.5px solid #F1F5F9;
+    background: white;
+    font-size: 15px;
+    font-weight: 800;
+    color: #1E3664;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    transition: all 0.2s;
+}
+
+.ssoButton:hover {
+    background: #F8FAFC;
+    border-color: #E2E8F0;
 }
 
 .rightSide {
     flex: 1;
-    background: #EEF2FF;
+    background: linear-gradient(135deg, #EEF2FF 0%, #E0E7FF 100%);
     display: flex;
     flex-direction: column;
+    align-items: center;
+    justify-content: center;
     padding: 60px;
     position: relative;
 }
 
 .visualImage {
     width: 100%;
+    max-width: 400px;
     height: auto;
-    filter: drop-shadow(0 20px 40px rgba(0, 0, 0, 0.1));
+    filter: drop-shadow(0 30px 60px rgba(0, 0, 0, 0.1));
+}
+
+.updateTag {
+    position: absolute;
+    bottom: 60px;
+    left: 60px;
+    right: 60px;
+    padding: 32px;
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(20px);
+    border-radius: 24px;
+    border: 1px solid white;
+}
+
+.updateTitle {
+    font-weight: 850;
+    font-size: 18px;
+    color: #1E3664;
+    margin-bottom: 8px;
+}
+
+.updateDesc {
+    font-size: 14px;
+    color: #64748B;
+    margin-bottom: 20px;
+    line-height: 1.5;
+}
+
+.learnMore {
+    background: #1E3664;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 800;
+    cursor: pointer;
 }
 
 @media (max-width: 1024px) {

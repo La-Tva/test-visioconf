@@ -72,6 +72,13 @@ body {
     min-height: 100dvh;
     padding-top: var(--header-height);
   }
+
+  /* Prevent iOS zoom on inputs */
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
 }
 
 a {

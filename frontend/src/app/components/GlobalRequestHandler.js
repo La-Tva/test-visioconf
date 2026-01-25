@@ -44,17 +44,25 @@ export default function GlobalRequestHandler() {
                 else if (msg.receive_private_message) {
                     if (pathname !== '/messages') {
                         const newMsg = msg.receive_private_message;
-                        // Fetch sender name logic? 
-                        // The message object usually has senderId. User might not be in preload if we are not authenticated?
-                        // Assuming newMsg has basic info or we can't show name yet without fetching.
-                        // Ideally backend sends senderName or we lookup.
-                        // For MVP: Show "Nouveau message !" or if `sender` is populated?
-                        // Modify server to send senderName? Or just "Nouveau message".
-                        // Server (Step 203) just saves message. The emit (Step 332 in previous contexts) might vary.
-                        // Let's assume we just show a generic or partial info for now.
+                        const senderId = typeof newMsg.sender === 'object' ? newMsg.sender._id : newMsg.sender;
+                        
+                        // Check if I am the sender
+                        const userStr = localStorage.getItem('user');
+                        let currentUserId = null;
+                        if (userStr) {
+                             try {
+                                 const u = JSON.parse(userStr);
+                                 currentUserId = u._id;
+                             } catch(e) {}
+                        }
+
+                        if (currentUserId && currentUserId === senderId) {
+                            return;
+                        }
+
                         setMsgNotification({
                             content: newMsg.content,
-                            senderId: newMsg.sender // ID only
+                            senderId: senderId
                         });
                         
                         // Auto hide

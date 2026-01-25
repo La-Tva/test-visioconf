@@ -2,13 +2,23 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useSocket } from '../context/SocketContext';
 import { usePreload } from '../context/PreloadContext';
+import { AnimatePresence, motion } from 'framer-motion';
 import styles from './messages.module.css';
 
 export default function MessagesPage() {
     const [friends, setFriends] = useState([]);
+    const [isMobile, setIsMobile] = useState(false); // Mobile detection
     const [selectedFriend, setSelectedFriend] = useState(null);
     const [messages, setMessages] = useState([]);
     const [inputMessage, setInputMessage] = useState('');
+
+    useEffect(() => {
+        const checkMobile = () => setIsMobile(window.innerWidth <= 768);
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
+
     const [currentUser, setCurrentUser] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
 
@@ -134,13 +144,16 @@ export default function MessagesPage() {
         setInputMessage('');
     };
 
+
+
     const filteredFriends = friends.filter(friend => 
         friend.firstname.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     return (
         <div className={styles.container}>
-            <div className={`${styles.sidebar} ${selectedFriend ? styles.mobileHidden : ''}`}>
+            {/* Sidebar always rendered. On mobile it sits behind the fixed chat area */}
+            <div className={styles.sidebar}>
                 <div className={styles.header}>
                     <h2>Messages</h2>
                 </div>
@@ -197,74 +210,85 @@ export default function MessagesPage() {
                 </div>
             </div>
 
-            <div className={`${styles.chatArea} ${!selectedFriend ? styles.mobileHidden : ''}`}>
-                {selectedFriend ? (
-                    <>
-                        <div className={styles.chatHeader}>
-                            <button className={styles.mobileBackBtn} onClick={() => setSelectedFriend(null)}>
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-                            </button>
+            <AnimatePresence mode="wait">
+                {(selectedFriend || !isMobile) && (
+                    <motion.div 
+                        key={selectedFriend ? selectedFriend._id : 'no-chat'}
+                        className={styles.chatArea}
+                        initial={{ x: isMobile ? "100%" : 40, opacity: 0 }}
+                        animate={{ x: 0, opacity: 1 }}
+                        exit={{ x: isMobile ? "100%" : -40, opacity: 0 }}
+                        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                    >
+                        {selectedFriend ? (
+                            <>
+                                <div className={styles.chatHeader}>
+                                    <button className={styles.mobileBackBtn} onClick={() => setSelectedFriend(null)}>
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                                    </button>
 
-                            <div className={styles.chatTitle}>
-                                <img 
-                                    src={`https://api.dicebear.com/9.x/shapes/svg?seed=${selectedFriend.firstname}`} 
-                                    className={styles.headerAvatar}
-                                />
-                                {selectedFriend.firstname}
-                                <span className={styles.roleBadge} style={{
-                                    background: selectedFriend.role === 'admin' ? '#DCFCE7' : (selectedFriend.role === 'enseignant' ? '#F3E8FF' : '#DBEAFE'),
-                                    color: selectedFriend.role === 'admin' ? '#166534' : (selectedFriend.role === 'enseignant' ? '#7E22CE' : '#1E40AF'),
-                                }}>
-                                    {selectedFriend.role || 'Étudiant'}
-                                </span>
-                            </div>
-                            <button type="button" onClick={handleRemoveFriend} className={styles.removeBtn}>
-                                Retirer
-                            </button>
-                        </div>
-                        
-                        <div className={styles.messagesList}>
-                            {displayedMessages.map((msg, index) => {
-                                const isMe = msg.sender === currentUser._id;
-                                return (
-                                    <div key={index} className={`${styles.messageRow} ${isMe ? styles.myMessageRow : styles.friendMessageRow}`}>
-                                        <div className={styles.messageBubble}>
-                                            {msg.content}
-                                        </div>
-                                        <div className={styles.messageTime}>
-                                            {new Date(msg.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                                        </div>
+                                    <div className={styles.chatTitle}>
+                                        <img 
+                                            src={`https://api.dicebear.com/9.x/shapes/svg?seed=${selectedFriend.firstname}`} 
+                                            className={styles.headerAvatar}
+                                        />
+                                        {selectedFriend.firstname}
+                                        <span className={styles.roleBadge} style={{
+                                            background: selectedFriend.role === 'admin' ? '#DCFCE7' : (selectedFriend.role === 'enseignant' ? '#F3E8FF' : '#DBEAFE'),
+                                            color: selectedFriend.role === 'admin' ? '#166534' : (selectedFriend.role === 'enseignant' ? '#7E22CE' : '#1E40AF'),
+                                        }}>
+                                            {selectedFriend.role || 'Étudiant'}
+                                        </span>
                                     </div>
-                                );
-                            })}
-                            <div ref={messagesEndRef} />
-                        </div>
+                                    <button type="button" onClick={handleRemoveFriend} className={styles.removeBtn}>
+                                        Retirer
+                                    </button>
+                                </div>
+                                
+                                <div className={styles.messagesList}>
+                                    {displayedMessages.map((msg, index) => {
+                                        const isMe = msg.sender === currentUser._id;
+                                        return (
+                                            <div key={index} className={`${styles.messageRow} ${isMe ? styles.myMessageRow : styles.friendMessageRow}`}>
+                                                <div className={styles.messageBubble}>
+                                                    {msg.content}
+                                                </div>
+                                                <div className={styles.messageTime}>
+                                                    {new Date(msg.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                    <div ref={messagesEndRef} />
+                                </div>
 
-                        <div className={styles.inputArea}>
-                            <form className={styles.messageForm} onSubmit={handleSendMessage}>
-                                <input
-                                    type="text"
-                                    className={styles.messageInput}
-                                    placeholder="Écrivez un message..."
-                                    value={inputMessage}
-                                    onChange={(e) => setInputMessage(e.target.value)}
-                                />
-                                <button type="submit" className={styles.sendBtn}>
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-                                </button>
-                            </form>
-                        </div>
-                    </>
-                ) : (
-                    <div className={styles.noChatSelected}>
-                        <div className={styles.noChatIcon}>
-                            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
-                        </div>
-                        <p style={{fontSize:'18px', fontWeight:700, color:'#1E3664', marginBottom:8}}>Vos Conversations</p>
-                        <p style={{fontSize:'14px'}}>Sélectionnez un contact pour commencer à discuter.</p>
-                    </div>
+                                <div className={styles.inputArea}>
+                                    <form className={styles.messageForm} onSubmit={handleSendMessage}>
+                                        <input
+                                            type="text"
+                                            className={styles.messageInput}
+                                            placeholder="Écrivez un message..."
+                                            value={inputMessage}
+                                            onChange={(e) => setInputMessage(e.target.value)}
+                                        />
+                                        <button type="submit" className={styles.sendBtn}>
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                                        </button>
+                                    </form>
+                                </div>
+                            </>
+                        ) : (
+                            <div className={styles.noChatSelected}>
+                                <div className={styles.noChatIcon}>
+                                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                                </div>
+                                <p style={{fontSize:'18px', fontWeight:700, color:'#1E3664', marginBottom:8}}>Vos Conversations</p>
+                                <p style={{fontSize:'14px'}}>Sélectionnez un contact pour commencer à discuter.</p>
+                            </div>
+                        )}
+                    </motion.div>
                 )}
-            </div>
+            </AnimatePresence>
         </div>
     );
 }

@@ -12,10 +12,22 @@ export default function MessagesPage() {
     const [currentUser, setCurrentUser] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
 
-    const { friends: preloadedFriends, refreshData } = usePreload();
+    const { friends: preloadedFriends, refreshData, markAsRead, setCurrentChatId } = usePreload();
     const { controleur, isReady } = useSocket();
     const messagesCompRef = useRef(null);
     const messagesEndRef = useRef(null);
+    const selectedFriendRef = useRef(null);
+
+    // Keep ref in sync for socket callback AND global context
+    useEffect(() => {
+        selectedFriendRef.current = selectedFriend;
+        if(selectedFriend) {
+            setCurrentChatId(selectedFriend._id);
+        } else {
+            setCurrentChatId(null);
+        }
+        return () => setCurrentChatId(null);
+    }, [selectedFriend, setCurrentChatId]);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -23,7 +35,7 @@ export default function MessagesPage() {
     useEffect(scrollToBottom, [messages]);
 
     useEffect(() => {
-        if(preloadedFriends && preloadedFriends.length > 0) {
+        if(preloadedFriends) {
             setFriends(preloadedFriends);
         }
     }, [preloadedFriends]);
@@ -48,6 +60,11 @@ export default function MessagesPage() {
                  else if (msg.receive_private_message) {
                      const newMsg = msg.receive_private_message;
                      setMessages(prev => [...prev, newMsg]);
+
+                     // If we are looking at this chat, mark as read immediately
+                     if (selectedFriendRef.current && selectedFriendRef.current._id === newMsg.sender) {
+                         markAsRead(newMsg.sender);
+                     }
                  }
                 else if (msg.friend_removed) {
                      refreshData();
@@ -58,18 +75,18 @@ export default function MessagesPage() {
         messagesCompRef.current = msgComp;
         
         controleur.inscription(msgComp, 
-            ['get messages', 'send message', 'friend_removed'], 
-            ['messages', 'receive_private_message']
+            ['get messages', 'send message', 'remove_friend'], 
+            ['messages', 'receive_private_message', 'friend_removed']
         );
 
         return () => {
              controleur.desincription(msgComp, 
-                ['get messages', 'send message', 'friend_removed'], 
-                ['messages', 'receive_private_message']
+                ['get messages', 'send message', 'remove_friend'], 
+                ['messages', 'receive_private_message', 'friend_removed']
              );
         };
 
-    }, [controleur, isReady, refreshData]);
+    }, [controleur, isReady, refreshData, markAsRead]);
 
     const displayedMessages = messages.filter(m => 
         selectedFriend && (
@@ -80,6 +97,7 @@ export default function MessagesPage() {
 
     const handleSelectFriend = (friend) => {
         setSelectedFriend(friend);
+        markAsRead(friend._id); // Mark as read when opening
         if (controleur && messagesCompRef.current && currentUser) {
             controleur.envoie(messagesCompRef.current, {
                 'get messages': {

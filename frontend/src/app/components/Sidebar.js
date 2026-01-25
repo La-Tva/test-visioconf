@@ -4,11 +4,26 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import styles from './Sidebar.module.css';
 
+import { usePreload } from '../context/PreloadContext';
+
 export default function Sidebar() {
     const [isExpanded, setIsExpanded] = useState(true);
     const [isMobileOpen, setIsMobileOpen] = useState(false); // State for mobile drawer
     const [user, setUser] = useState(null);
     const pathname = usePathname();
+    const { friends, teams } = usePreload();
+
+    const totalUnread = friends?.reduce((acc, f) => acc + (f.unreadCount || 0), 0) || 0;
+    
+    // Calculate team unread
+    // unreadCounts is an object like { "userId": 5 }
+    const totalTeamUnread = teams?.reduce((acc, team) => {
+        if (user && team.unreadCounts) {
+            // Mongoose Map in JSON is an object
+            return acc + (team.unreadCounts[user._id] || 0);
+        }
+        return acc;
+    }, 0) || 0;
 
     useEffect(() => {
         const userStr = localStorage.getItem('user');
@@ -19,11 +34,11 @@ export default function Sidebar() {
                 console.error("Sidebar user parse error", e);
             }
         }
-    }, [pathname]); // Refresh on navigation just in case
+    }, [pathname]);
 
     const menuItems = [
-        { label: "Conversation", icon: <MessageIcon />, link: "/messages" },
-        { label: "Équipe", icon: <TeamIcon />, link: "/team" },
+        { label: "Conversation", icon: <MessageIcon />, link: "/messages", badge: totalUnread },
+        { label: "Équipe", icon: <TeamIcon />, link: "/team", badge: totalTeamUnread },
         { label: "Dossier", icon: <FolderIcon />, link: "/files" },
         { label: "Annuaire", icon: <DirectoryIcon />, link: "/annuaire" },
     ];
@@ -101,6 +116,11 @@ export default function Sidebar() {
                             >
                                 <span className={styles.icon}>{item.icon}</span>
                                 <span className={styles.label}>{item.label}</span>
+                                {item.badge > 0 && (
+                                    <span className={styles.badge}>
+                                        {item.badge > 99 ? '99+' : item.badge}
+                                    </span>
+                                )}
                             </Link>
                         )
                     })}

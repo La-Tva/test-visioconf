@@ -1,6 +1,7 @@
 "use client";
 import React, { useEffect, useRef, useState } from 'react';
 import { useSocket } from '../context/SocketContext';
+import { usePreload } from '../context/PreloadContext';
 import { usePathname, useRouter } from 'next/navigation';
 
 export default function GlobalRequestHandler() {
@@ -8,6 +9,7 @@ export default function GlobalRequestHandler() {
     const [msgNotification, setMsgNotification] = useState(null);
     const globalCompRef = useRef(null);
     const { controleur, identifyUser, isReady } = useSocket();
+    const { refreshData } = usePreload();
     const pathname = usePathname();
     const router = useRouter();
 
@@ -23,6 +25,7 @@ export default function GlobalRequestHandler() {
                 }
                 else if (msg.friend_request_accepted) {
                     console.log("Friend request accepted", msg.friend_request_accepted);
+                    refreshData(); 
                 }
                 else if (msg['auth status'] && msg['auth status'].success) {
                     // Check for pending requests
@@ -91,6 +94,14 @@ export default function GlobalRequestHandler() {
                     accepted: accepted
                 }
             });
+            
+            // If accepted locally, we might want to optimistic update? 
+            // The socket 'friend_request_accepted' event should come back and trigger refreshData.
+            // But if we initiated it, maybe we don't receive 'friend_request_accepted' (usually sent to the requester)?
+            // If I accept, the backend should notify ME too or I should just refresh.
+            if(accepted) {
+                 setTimeout(() => refreshData(), 500); // Safety delay for DB update
+            }
         }
         setRequest(null);
     };

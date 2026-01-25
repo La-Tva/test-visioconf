@@ -1,120 +1,136 @@
 .sidebar {
     height: 100vh;
-    /* Fixed full height for desktop */
     position: sticky;
     top: 0;
     background-color: #FFFFFF;
-    /* Added strong shadow for visibility as requested */
-    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.08);
+    box-shadow: 1px 0 20px rgba(0, 0, 0, 0.05);
+    /* Softer premium shadow */
     border-right: 1px solid #F1F5F9;
     display: flex;
     flex-direction: column;
     padding: 24px 16px;
-    /* Smoother 'bouncy' transition */
-    transition: width 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), transform 0.3s ease;
+    transition: width 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
     flex-shrink: 0;
     z-index: 50;
     overflow: hidden;
 }
 
 .expanded {
-    width: 280px;
+    width: 260px;
+    /* Slightly more compact than 280 */
 }
 
 .collapsed {
-    width: 88px;
-    /* Slightly wider collapsed state for better icon breathing room */
+    width: 80px;
 }
 
 /* Header */
 .header {
-    margin-bottom: 30px;
+    margin-bottom: 40px;
     display: flex;
     align-items: center;
     min-height: 48px;
+    padding-left: 4px;
     overflow: hidden;
-    padding-left: 2px;
-    /* Slight alignment fix */
-    justify-content: space-between;
-    /* Allow space for close button */
 }
 
 .logoContainer {
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 14px;
     white-space: nowrap;
+    text-decoration: none;
 }
 
 .logoIcon {
-    width: 32px;
-    height: 32px;
+    width: 36px;
+    /* Larger logo */
+    height: 36px;
     flex-shrink: 0;
-    /* Animated logo */
-    transition: transform 0.3s ease;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .sidebar:hover .logoIcon {
-    transform: scale(1.1);
+    transform: rotate(10deg) scale(1.05);
+    /* Playful interaction */
 }
 
 .logoText {
-    font-size: 1.3rem;
+    font-size: 1.25rem;
     font-weight: 800;
-    color: var(--Primaire);
+    background: linear-gradient(135deg, #1E3664 0%, #2563EB 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
     opacity: 0;
-    /* Delay the text appearance so it doesn't clip during expansion */
     transition: opacity 0.2s ease;
-    transition-delay: 0s;
-    font-family: var(--font-bricolage);
-    transform: translateX(-10px);
+    font-family: 'Inter', sans-serif;
+    /* Enforce premium font */
+    letter-spacing: -0.03em;
 }
 
 .expanded .logoText {
     opacity: 1;
-    transform: translateX(0);
-    transition: opacity 0.4s ease 0.1s, transform 0.4s ease 0.1s;
+    transition: opacity 0.4s ease 0.1s;
 }
 
 /* Nav */
 .nav {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
+    /* Tighter gap */
     flex: 1;
 }
 
 .navItem {
     display: flex;
     align-items: center;
-    gap: 16px;
-    padding: 14px;
+    gap: 14px;
+    padding: 12px 14px;
     border-radius: 12px;
     color: #64748B;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     text-decoration: none;
     white-space: nowrap;
     position: relative;
-    overflow: hidden;
+    font-weight: 500;
+    border: 1px solid transparent;
+    /* Prevent layout shift */
 }
 
 .navItem:hover {
     background-color: #F8FAFC;
-    color: var(--Primaire);
-    transform: translateX(4px);
+    color: #1E3664;
 }
 
 .active {
-    background-color: #E0F2FE;
-    color: var(--Primaire);
-    font-weight: 700;
-    /* Active indicator stripe */
-    box-shadow: inset 4px 0 0 var(--Secondaire);
+    background: linear-gradient(to right, #EFF6FF, rgba(255, 255, 255, 0));
+    color: #2563EB;
+    font-weight: 600;
+    border-color: #DBEAFE;
 }
 
-.active:hover {
-    background-color: #DBEAFE;
+/* Accent Indicator for Active Item */
+.active::before {
+    content: '';
+    position: absolute;
+    left: -16px;
+    /* Outside padding */
+    top: 50%;
+    transform: translateY(-50%);
+    width: 4px;
+    height: 20px;
+    background: #2563EB;
+    border-radius: 0 4px 4px 0;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.expanded .active::before {
+    opacity: 1;
+    left: 0;
 }
 
 .icon {
@@ -127,18 +143,63 @@
 }
 
 .label {
-    font-size: 1rem;
-    font-weight: 600;
+    font-size: 0.95rem;
     opacity: 0;
-    transform: translateX(-10px);
-    transition: opacity 0.2s ease, transform 0.2s ease;
+    /* transform removed for cleaner reveal */
+    transition: opacity 0.2s ease;
 }
 
 .expanded .label {
     opacity: 1;
-    transform: translateX(0);
-    /* Sync text reveal with width expansion */
-    transition: opacity 0.3s ease 0.1s, transform 0.3s ease 0.1s;
+    transition: opacity 0.3s ease 0.1s;
+}
+
+.collapsed .label {
+    display: none;
+}
+
+/* Collapsed state adjustments */
+.collapsed .navItem {
+    justify-content: center;
+    padding-left: 0;
+    padding-right: 0;
+    gap: 0;
+    /* Remove gap so icon is truly centered */
+}
+
+.badge {
+    background: #FF453A;
+    color: white;
+    font-size: 0.7rem;
+    font-weight: 700;
+    min-width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 6px rgba(255, 69, 58, 0.3);
+    border-radius: 10px;
+    padding: 0 5px;
+
+    /* Absolute by default for collapsed state (Targeting center icon) */
+    position: absolute;
+    left: 50%;
+    margin-left: 4px;
+    /* Offset from center to right shoulder of icon */
+    top: 8px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 10;
+    pointer-events: none;
+}
+
+.expanded .badge {
+    /* Reset to flow layout in expanded mode */
+    position: relative;
+    left: auto;
+    top: auto;
+    margin-left: auto;
+    /* Push to right */
+    pointer-events: auto;
 }
 
 /* Footer */

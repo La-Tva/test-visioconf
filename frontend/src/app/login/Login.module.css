@@ -287,16 +287,18 @@
         inset: auto;
         min-height: 100vh;
         height: auto;
-        overflow-y: auto;
         display: flex;
         align-items: flex-start;
-        /* Start from top on mobile */
+        justify-content: center;
         padding: 40px 20px;
+        background: #F8FAFC;
+        overflow-y: visible;
     }
 
     .card {
         max-width: 500px;
         min-height: auto;
+        margin: 0 auto;
     }
 
     .rightSide {

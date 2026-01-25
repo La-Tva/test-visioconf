@@ -38,9 +38,8 @@ body {
   font-family: var(--font-jakarta), sans-serif;
   background: var(--Background);
   color: var(--Texte);
-  height: 100%;
-  overflow: hidden;
-  /* Prevent body scroll */
+  min-height: 100%;
+  overflow-x: hidden;
 }
 
 .responsive-layout {

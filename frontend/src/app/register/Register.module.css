@@ -190,15 +190,18 @@
         inset: auto;
         min-height: 100vh;
         height: auto;
-        overflow-y: auto;
         display: flex;
         align-items: flex-start;
+        justify-content: center;
         padding: 40px 20px;
+        background: #F5F3FF;
+        overflow-y: visible;
     }
 
     .card {
         max-width: 500px;
         min-height: auto;
+        margin: 0 auto;
     }
 
     .rightSide {

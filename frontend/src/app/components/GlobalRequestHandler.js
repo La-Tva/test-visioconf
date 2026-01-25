@@ -3,13 +3,14 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useSocket } from '../context/SocketContext';
 import { usePreload } from '../context/PreloadContext';
 import { usePathname, useRouter } from 'next/navigation';
+import styles from './GlobalRequestHandler.module.css';
 
 export default function GlobalRequestHandler() {
     const [request, setRequest] = useState(null);
     const [msgNotification, setMsgNotification] = useState(null);
     const globalCompRef = useRef(null);
     const { controleur, identifyUser, isReady } = useSocket();
-    const { refreshData } = usePreload();
+    const { refreshData, users } = usePreload();
     const pathname = usePathname();
     const router = useRouter();
 
@@ -158,28 +159,28 @@ export default function GlobalRequestHandler() {
 
             {msgNotification && (
                 <div 
+                    className={styles.toast}
                     onClick={() => {
                         setMsgNotification(null);
                         router.push('/messages');
                     }}
-                    style={{
-                        position: 'fixed',
-                        top: '20px',
-                        right: '20px',
-                        backgroundColor: '#3B82F6',
-                        color: 'white',
-                        padding: '16px 24px',
-                        borderRadius: '12px',
-                        boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)',
-                        zIndex: 9999,
-                        cursor: 'pointer',
-                        animation: 'slideIn 0.3s ease-out'
-                    }}
                 >
-                    <h4 style={{margin: '0 0 4px 0', fontSize:'14px'}}>Nouveau message</h4>
-                    <p style={{margin: 0, fontSize:'14px', opacity: 0.9}}>
-                        {msgNotification.content}
-                    </p>
+                    <img 
+                        src={`https://api.dicebear.com/9.x/shapes/svg?seed=${msgNotification.senderId}`} 
+                        alt="Avatar" 
+                        className={styles.avatar}
+                    />
+                    <div className={styles.content}>
+                        <div className={styles.header}>
+                            <span className={styles.senderName}>
+                                {users.find(u => u._id === msgNotification.senderId)?.firstname || 'Nouveau message'}
+                            </span>
+                            <span className={styles.time}>Maintenant</span>
+                        </div>
+                        <p className={styles.messagePreview}>
+                            {msgNotification.content}
+                        </p>
+                    </div>
                 </div>
             )}
         </>

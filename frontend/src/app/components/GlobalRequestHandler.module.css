@@ -1,0 +1,91 @@
+.toast {
+    position: fixed;
+    top: 24px;
+    right: 24px;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(12px);
+    width: 340px;
+    padding: 16px;
+    border-radius: 20px;
+    box-shadow:
+        0 4px 6px -1px rgba(0, 0, 0, 0.05),
+        0 20px 25px -5px rgba(0, 0, 0, 0.05),
+        0 0 0 1px rgba(0, 0, 0, 0.03);
+    /* Subtle border */
+    z-index: 10000;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    animation: slideIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+    border-left: 4px solid #3B82F6;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.toast:hover {
+    transform: translateY(2px) scale(0.98);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 16px;
+    object-fit: cover;
+    background: #F1F5F9;
+    flex-shrink: 0;
+}
+
+.content {
+    flex: 1;
+    overflow: hidden;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.senderName {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #1E293B;
+}
+
+.time {
+    font-size: 0.75rem;
+    color: #94A3B8;
+}
+
+.messagePreview {
+    color: #64748B;
+    font-size: 0.85rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.4;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px) scale(0.9);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+    .toast {
+        width: calc(100% - 32px);
+        left: 16px;
+        right: 16px;
+        top: 16px;
+    }
+}

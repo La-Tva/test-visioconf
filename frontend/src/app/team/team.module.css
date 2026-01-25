@@ -1,11 +1,14 @@
 .container {
     display: flex;
+    flex-direction: column;
     flex: 1;
     height: 100%;
+    width: 100%;
     min-height: 0;
     background-color: #F8FAFC;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
     overflow: hidden;
+    position: relative;
 }
 
 .mainContent {
@@ -194,13 +197,15 @@
 
 /* Chat Styles */
 .chatContainer {
-    flex: 1;
     display: flex;
     flex-direction: column;
     height: 100%;
     min-height: 0;
+    flex: 1;
+    width: 100%;
     background: #FFFFFF;
     overflow: hidden;
+    position: relative;
 }
 
 .chatHeader {
@@ -263,9 +268,13 @@
 .chatBody {
     flex: 1;
     display: flex;
+    flex-direction: row;
+    /* Correct: Chat | Sidebar side-by-side */
     overflow: hidden;
     height: 100%;
     min-height: 0;
+    position: relative;
+    /* Context for nested absolutes if any */
 }
 
 .mainChatArea {
@@ -278,7 +287,9 @@
 }
 
 .messagesList {
-    flex: 1;
+    flex: 1 1 0;
+    /* Grow, Shrink, Basis 0 - Critical for scroll */
+    min-height: 0;
     overflow-y: auto;
     padding: 24px;
     display: flex;
@@ -337,6 +348,14 @@
     display: flex;
     gap: 12px;
     align-items: center;
+    margin-top: auto;
+    /* Force to bottom if flex spacing fails */
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.03);
+    /* Mobile-like shadow */
+    z-index: 20;
+    /* Ensure on top */
+    flex-shrink: 0;
+    /* Prevent input from being squashed */
 }
 
 .messageInput {

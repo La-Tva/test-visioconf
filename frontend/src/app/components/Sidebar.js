@@ -106,6 +106,28 @@ export default function Sidebar() {
                     })}
                 </nav>
 
+                <div className={styles.footer}>
+                    {user && (
+                        <div className={styles.profileContainer}>
+                            <div className={styles.avatarWrapper}>
+                                <img 
+                                    src={`https://api.dicebear.com/9.x/shapes/svg?seed=${user._id}`} 
+                                    alt="Profile" 
+                                    className={styles.avatar}
+                                />
+                                <div className={styles.statusIndicator} style={{
+                                    backgroundColor: user.disturb_status === 'dnd' ? '#EF4444' : 
+                                                    (user.disturb_status === 'away' ? '#F97316' : '#22C55E')
+                                }}></div>
+                            </div>
+                            <div className={styles.profileInfo}>
+                                <span className={styles.userName}>{user.firstname}</span>
+                                <span className={styles.userRole}>{user.role || 'Membre'}</span>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
             </div>
         </>
     );

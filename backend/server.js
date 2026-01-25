@@ -914,7 +914,8 @@ io.on('connection', (socket) => {
                         space: message.upload_file.spaceId || undefined
                     });
                     await newFile.save();
-                    socket.emit('message', JSON.stringify({
+                    // Broadcast success
+                    io.emit('message', JSON.stringify({
                         file_uploading_status: { success: true, file: newFile }
                     }));
                 } catch (e) {
@@ -950,7 +951,8 @@ io.on('connection', (socket) => {
                     }
                     const newSpace = new Space({ name, owner: userId });
                     await newSpace.save();
-                    socket.emit('message', JSON.stringify({
+                    // Broadcast success
+                    io.emit('message', JSON.stringify({
                         space_creating_status: { success: true, space: newSpace }
                     }));
                 } catch (e) {
@@ -973,7 +975,8 @@ io.on('connection', (socket) => {
                     
                     await Space.findByIdAndDelete(spaceId);
                     
-                    socket.emit('message', JSON.stringify({
+                    // Broadcast success
+                    io.emit('message', JSON.stringify({
                         space_deleting_status: { success: true, spaceId: spaceId }
                     }));
                 } catch (e) {
@@ -998,7 +1001,8 @@ io.on('connection', (socket) => {
                     const file = await File.findById(fileId);
                     if (file) {
                         await File.findByIdAndDelete(fileId);
-                        socket.emit('message', JSON.stringify({
+                        // Broadcast to ALL users so the file disappears for everyone immediately
+                        io.emit('message', JSON.stringify({
                             file_deleting_status: { success: true, fileId: fileId }
                         }));
                     }

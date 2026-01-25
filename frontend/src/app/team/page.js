@@ -259,116 +259,119 @@ export default function TeamPage() {
 
     return (
         <div className={styles.container}>
-            {/* List View: Visible if no team selected OR on mobile (background layer) */}
-            {(!isMobile || !activeTeam) && (
-                <div className={styles.mainContent}>
-                    <div className={styles.header}>
-                        <h1 className={styles.title}>Mes Équipes</h1>
-                        <button className={styles.createBtn} onClick={() => setIsModalOpen(true)}>
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                            Créer une équipe
-                        </button>
-                    </div>
-
-                    <div className={styles.filterContainer}>
-                        <div className={styles.filterActions}>
-                            <button 
-                                className={`${styles.filterBtn} ${filter === 'all' ? styles.filterBtnActive : ''}`}
-                                onClick={() => setFilter('all')}
-                            >
-                                Tous
-                            </button>
-                            <button 
-                                className={`${styles.filterBtn} ${filter === 'student' ? styles.filterBtnActive : ''}`}
-                                onClick={() => setFilter('student')}
-                            >
-                                Étudiant
-                            </button>
-                            <button 
-                                className={`${styles.filterBtn} ${filter === 'admin' ? styles.filterBtnActive : ''}`}
-                                onClick={() => setFilter('admin')}
-                            >
-                                Admin
+            <AnimatePresence mode="wait">
+                {!activeTeam ? (
+                    <motion.div 
+                        key="team-list"
+                        className={styles.mainContent}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -20 }}
+                        transition={{ duration: 0.2 }}
+                    >
+                        <div className={styles.header}>
+                            <h1 className={styles.title}>Mes Équipes</h1>
+                            <button className={styles.createBtn} onClick={() => setIsModalOpen(true)}>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                                Créer une équipe
                             </button>
                         </div>
-                        
-                        <div className={styles.searchWrapper}>
-                            <svg className={styles.searchIcon} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                <circle cx="11" cy="11" r="8"></circle>
-                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                            </svg>
-                            <input 
-                                type="text" 
-                                placeholder="Rechercher une équipe..." 
-                                className={styles.searchInput}
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                            />
-                        </div>
-                    </div>
 
-                    <div className={styles.grid}>
-                        {filteredTeams.map(team => {
-                                const unread = team.unreadCounts && currentUser 
-                                            ? (team.unreadCounts[currentUser._id] || 0) 
-                                            : 0;
-                                
-                                return (
-                                <div key={team._id} className={styles.teamCard} onClick={() => openTeamChat(team)}>
-                                    <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start'}}>
-                                        <div className={styles.teamName}>{team.name}</div>
-                                        {unread > 0 && (
-                                            <div style={{
-                                                backgroundColor: '#EF4444', color: 'white', 
-                                                borderRadius: '50%', width: '20px', height: '20px', 
-                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                fontSize: '11px', fontWeight: 'bold'
-                                            }}>
-                                                {unread}
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div className={styles.memberCount}>{team.members.length + 1} membres</div>
+                        <div className={styles.filterContainer}>
+                            <div className={styles.filterActions}>
+                                <button 
+                                    className={`${styles.filterBtn} ${filter === 'all' ? styles.filterBtnActive : ''}`}
+                                    onClick={() => setFilter('all')}
+                                >
+                                    Tous
+                                </button>
+                                <button 
+                                    className={`${styles.filterBtn} ${filter === 'student' ? styles.filterBtnActive : ''}`}
+                                    onClick={() => setFilter('student')}
+                                >
+                                    Étudiant
+                                </button>
+                                <button 
+                                    className={`${styles.filterBtn} ${filter === 'admin' ? styles.filterBtnActive : ''}`}
+                                    onClick={() => setFilter('admin')}
+                                >
+                                    Admin
+                                </button>
+                            </div>
+                            
+                            <div className={styles.searchWrapper}>
+                                <svg className={styles.searchIcon} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <circle cx="11" cy="11" r="8"></circle>
+                                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                </svg>
+                                <input 
+                                    type="text" 
+                                    placeholder="Rechercher une équipe..." 
+                                    className={styles.searchInput}
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                />
+                            </div>
+                        </div>
+
+                        <div className={styles.grid}>
+                            {filteredTeams.map(team => {
+                                    const unread = team.unreadCounts && currentUser 
+                                                ? (team.unreadCounts[currentUser._id] || 0) 
+                                                : 0;
                                     
-                                    <div className={styles.cardFooter}>
-                                        <div style={{fontSize: '12px', color: '#64748B'}}>
-                                            Par <span style={{fontWeight:'600'}}>{team.owner?.firstname}</span> 
+                                    return (
+                                    <div key={team._id} className={styles.teamCard} onClick={() => openTeamChat(team)}>
+                                        <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start'}}>
+                                            <div className={styles.teamName}>{team.name}</div>
+                                            {unread > 0 && (
+                                                <div style={{
+                                                    backgroundColor: '#EF4444', color: 'white', 
+                                                    borderRadius: '50%', width: '20px', height: '20px', 
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                    fontSize: '11px', fontWeight: 'bold'
+                                                }}>
+                                                    {unread}
+                                                </div>
+                                            )}
                                         </div>
-                                        <div className={styles.avatars}>
-                                            <img 
-                                                src={`https://api.dicebear.com/9.x/shapes/svg?seed=${team.owner?._id}`} 
-                                                className={styles.avatar} 
-                                                alt=""
-                                            />
-                                            {team.members.slice(0, 3).map(m => (
+                                        <div className={styles.memberCount}>{team.members.length + 1} membres</div>
+                                        
+                                        <div className={styles.cardFooter}>
+                                            <div style={{fontSize: '12px', color: '#64748B'}}>
+                                                Par <span style={{fontWeight:'600'}}>{team.owner?.firstname}</span> 
+                                            </div>
+                                            <div className={styles.avatars}>
                                                 <img 
-                                                    key={m._id}
-                                                    src={`https://api.dicebear.com/9.x/shapes/svg?seed=${m._id}`}
-                                                    className={styles.avatar}
+                                                    src={`https://api.dicebear.com/9.x/shapes/svg?seed=${team.owner?._id}`} 
+                                                    className={styles.avatar} 
                                                     alt=""
                                                 />
-                                            ))}
+                                                {team.members.slice(0, 3).map(m => (
+                                                    <img 
+                                                        key={m._id}
+                                                        src={`https://api.dicebear.com/9.x/shapes/svg?seed=${m._id}`}
+                                                        className={styles.avatar}
+                                                        alt=""
+                                                    />
+                                                ))}
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            );
-                        })}
-                        {teams.length === 0 && (
-                            <p style={{color: '#64748B'}}>Vous n'êtes dans aucune équipe.</p>
-                        )}
-                    </div>
-                </div>
-            )}
-
-            {/* Chat View */}
-            <AnimatePresence mode="wait">
-                {activeTeam && (
+                                );
+                            })}
+                            {teams.length === 0 && (
+                                <p style={{color: '#64748B'}}>Vous n'êtes dans aucune équipe.</p>
+                            )}
+                        </div>
+                    </motion.div>
+                ) : (
                     <motion.div 
                         className={styles.chatContainer}
                         key={activeTeam._id}
-                        initial={{ x: isMobile ? "100%" : 40, opacity: 0 }}
+                        initial={{ x: isMobile ? "100%" : 20, opacity: 0 }}
                         animate={{ x: 0, opacity: 1 }}
-                        exit={{ x: isMobile ? "100%" : -40, opacity: 0 }}
+                        exit={{ x: isMobile ? "100%" : 20, opacity: 0 }}
                         transition={{ type: "spring", stiffness: 300, damping: 30 }}
                         style={isMobile ? { position: 'fixed', top: 0, left: 0, width: '100%', height:'100%', zIndex: 1200, background: 'white' } : {}}
                     >

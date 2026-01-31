@@ -1014,18 +1014,61 @@ io.on('connection', (socket) => {
                 }
             }
 
+            else if (message['call-team']) {
+                const { teamId, offer } = message['call-team'];
+                try {
+                    const Team = require('./models/Team');
+                    const User = require('./models/User');
+                    const team = await Team.findById(teamId).populate('members').populate('owner');
+                    const caller = await User.findOne({ socket_id: socket.id });
+
+                    if (team && caller) {
+                        const recipients = [...team.members, team.owner];
+                        console.log(`Blast dialing team ${team.name} (${recipients.length} members) from ${caller.firstname}`);
+                        
+                        for (const recipient of recipients) {
+                             // Don't call self
+                             if (recipient._id.toString() !== caller._id.toString() && recipient.socket_id && recipient.is_online) {
+                                 io.to(recipient.socket_id).emit('message', JSON.stringify({
+                                     'call-made': {
+                                         offer: offer,
+                                         socket: socket.id,
+                                         user: { firstname: caller.firstname, picture: caller.picture, _id: caller._id },
+                                         isGroupCall: true, 
+                                         teamName: team.name
+                                     }
+                                 }));
+                             }
+                        }
+                    }
+                } catch (e) {
+                    console.error('Call team error:', e);
+                }
+            }
             else if (message['call-user']) {
                 const { to, offer } = message['call-user'];
                 try {
                     const User = require('./models/User');
-                    const targetUser = await User.findById(to); // 'to' is userId here
-                    
                     // Find Caller details
                     const caller = await User.findOne({ socket_id: socket.id });
 
-                    if (targetUser && targetUser.socket_id) {
-                         console.log(`Forwarding call offer from ${caller ? caller.firstname : socket.id} to ${targetUser.firstname} (${targetUser.socket_id})`);
-                         io.to(targetUser.socket_id).emit('message', JSON.stringify({
+                    let targetSocketId = null;
+
+                    // Check if 'to' is User ID or Socket ID
+                    // Mongo ID is 24 hex chars. 
+                    if (typeof to === 'string' && to.match(/^[0-9a-fA-F]{24}$/)) {
+                         const targetUser = await User.findById(to);
+                         if (targetUser && targetUser.socket_id && targetUser.is_online) {
+                             targetSocketId = targetUser.socket_id;
+                         }
+                    } else {
+                         // Assume Socket ID (used during renegotiation or group call candidates)
+                         targetSocketId = to;
+                    }
+
+                    if (targetSocketId) {
+                         console.log(`Forwarding call offer/renegotiation from ${caller ? caller.firstname : socket.id} to ${targetSocketId}`);
+                         io.to(targetSocketId).emit('message', JSON.stringify({
                              'call-made': {
                                  offer: offer,
                                  socket: socket.id, 
@@ -1033,7 +1076,7 @@ io.on('connection', (socket) => {
                              }
                          }));
                     } else {
-                        console.log(`Target user ${to} for call not found or offline.`);
+                        console.log(`Target ${to} for call not found or offline.`);
                     }
                 } catch (e) {
                     console.error('Call user error:', e);
@@ -1060,13 +1103,10 @@ io.on('connection', (socket) => {
             }
             else if (message['ice-candidate']) {
                 const { to, candidate } = message['ice-candidate']; 
-                // 'to' can be userId (initial offer) OR socketId (subsequent exchange)
-                // We need to handle both or standardize.
-                // CallContext sends userId for offer candidates and socketId for answer candidates.
-                
+                if (!to) return;
+
                 try {
-                     // Check if 'to' looks like a Mongo ID (24 hex chars) -> User ID
-                     if (to.match(/^[0-9a-fA-F]{24}$/)) {
+                     if (typeof to === 'string' && to.match(/^[0-9a-fA-F]{24}$/)) {
                          const User = require('./models/User');
                          const targetUser = await User.findById(to);
                          if (targetUser && targetUser.socket_id) {
@@ -1078,7 +1118,6 @@ io.on('connection', (socket) => {
                              }));
                          }
                      } else {
-                         // Assume it's a socket ID
                          io.to(to).emit('message', JSON.stringify({
                              'ice-candidate': {
                                  candidate: candidate,
@@ -1093,6 +1132,7 @@ io.on('connection', (socket) => {
             
             else if (message['reject-call']) {
                 const { to } = message['reject-call'];
+                if (!to) return;
                 try {
                      io.to(to).emit('message', JSON.stringify({
                          'call-rejected': {
@@ -1105,15 +1145,8 @@ io.on('connection', (socket) => {
             }
             else if (message['hang-up']) {
                 const { to } = message['hang-up'];
+                if (!to) return;
                 try {
-                     if (!to) {
-                         // Valid case if user hangs up before call starts or if state is lost? 
-                         // Just ignore or log warn.
-                         console.log("Hang-up received with no target.");
-                         return;
-                     }
-
-                     // Check if 'to' is a socket ID or User ID
                      if (typeof to === 'string' && to.match(/^[0-9a-fA-F]{24}$/)) {
                           const User = require('./models/User');
                           const targetUser = await User.findById(to);
@@ -1122,7 +1155,7 @@ io.on('connection', (socket) => {
                                   'call-ended': { socket: socket.id }
                                }));
                           }
-                     } else if (to) {
+                     } else {
                           io.to(to).emit('message', JSON.stringify({
                               'call-ended': { socket: socket.id }
                           }));
@@ -1157,7 +1190,7 @@ io.on('connection', (socket) => {
         console.log('Received demande_liste');
         const listes = {
             emission: ['login_status', 'registration_status', 'users', 'user_updating status', 'user_deleting_status', 'receive_friend_request', 'friend_request_accepted', 'messages', 'friends', 'auth status', 'friend_removed', 'last_messages', 'user_status_changed', 'user_registered', 'user_updated', 'user_deleted', 'team_creating_status', 'teams', 'receive_team_message', 'team_messages', 'leave_team_status', 'team_deleting_status', 'team_updating_status', 'files', 'file_uploading_status', 'file_updating_status', 'file_deleting_status', 'spaces', 'space_creating_status', 'space_deleting_status', 'call-made', 'answer-made', 'ice-candidate', 'call-rejected', 'call-ended'],
-            abonnement: ['login', 'register', 'get users', 'update user', 'delete_user', 'friend_request', 'friend_response', 'send message', 'get messages', 'get friends', 'authenticate', 'remove_friend', 'get_last_messages', 'create team', 'get teams', 'team_message', 'get_team_messages', 'leave_team', 'delete team', 'add_team_member', 'remove_team_member', 'get_files', 'get file', 'upload_file', 'update file', 'delete_file', 'create_space', 'get_spaces', 'delete_space', 'call-user', 'make-answer', 'ice-candidate', 'reject-call', 'hang-up']
+            abonnement: ['login', 'register', 'get users', 'update user', 'delete_user', 'friend_request', 'friend_response', 'send message', 'get messages', 'get friends', 'authenticate', 'remove_friend', 'get_last_messages', 'create team', 'get teams', 'team_message', 'get_team_messages', 'leave_team', 'delete team', 'add_team_member', 'remove_team_member', 'get_files', 'get file', 'upload_file', 'update file', 'delete_file', 'create_space', 'get_spaces', 'delete_space', 'call-user', 'make-answer', 'ice-candidate', 'reject-call', 'hang-up', 'call-team']
         };
         socket.emit('donne_liste', JSON.stringify(listes));
     });

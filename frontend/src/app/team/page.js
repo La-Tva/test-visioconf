@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSocket } from '../context/SocketContext';
 import { usePreload } from '../context/PreloadContext';
+import { useCall } from '../context/CallContext';
 import { AnimatePresence, motion } from 'framer-motion';
 import styles from './team.module.css';
 
@@ -29,9 +30,9 @@ export default function TeamPage() {
     const [searchTerm, setSearchTerm] = useState('');
     const [showMembersList, setShowMembersList] = useState(false);
 
-    // Get global users (potential team members)
     const { users } = usePreload(); 
     const { controleur, isReady } = useSocket();
+    const { startCall, startGroupCall } = useCall();
     const teamCompRef = useRef(null);
     const messagesEndRef = useRef(null);
     const activeTeamRef = useRef(activeTeam);
@@ -382,6 +383,9 @@ export default function TeamPage() {
                              <h2 className={styles.chatTitle}>{activeTeam.name}</h2>
                              
                              <div className={styles.headerActions}>
+                                 <button onClick={() => startGroupCall(activeTeam)} className={styles.iconBtn} title="Lancer un appel de groupe" style={{color:'#3B82F6', marginRight:4}}>
+                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.42 19.42 0 0 1-3.33-2.67m-2.67-3.34a19.79 19.79 0 0 1-3.07-8.63A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91"></path></svg>
+                                 </button>
                                  <button onClick={() => setShowMembersList(!showMembersList)} className={`${styles.iconBtn} ${showMembersList ? styles.activeIconBtn : ''}`} title="Voir les membres">
                                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
                                  </button>
@@ -447,38 +451,90 @@ export default function TeamPage() {
                                 </div>
                                 
                                 {/* Owner */}
-                                <div className={styles.memberItemSmall}>
-                                    <img 
-                                        src={`https://api.dicebear.com/9.x/shapes/svg?seed=${activeTeam.owner?._id}`} 
-                                        className={styles.avatarSmall} 
-                                        alt=""
-                                    />
-                                    <span style={{fontSize: '14px', fontWeight: '600', color: '#0F172A'}}>{activeTeam.owner?.firstname}</span>
-                                    <span className={`${styles.ownerBadge} ${styles[activeTeam.owner?.role || 'admin']}`}>
-                                        {activeTeam.owner?.role || 'PROPRIO'}
-                                    </span>
-                                </div>
+                                {(() => {
+                                    const owner = activeTeam.owner;
+                                    const realOwner = users.find(u => u._id === owner?._id) || owner;
+                                    const isMe = owner?._id === currentUser?._id;
+                                    
+                                    return owner ? (
+                                        <div className={styles.memberItemSmall}>
+                                            <div style={{display:'flex', alignItems:'center', flex:1}}>
+                                                <img 
+                                                    src={`https://api.dicebear.com/9.x/shapes/svg?seed=${owner._id}`} 
+                                                    className={styles.avatarSmall} 
+                                                    alt=""
+                                                />
+                                                <div style={{display:'flex', flexDirection:'column'}}>
+                                                    <span style={{fontSize: '14px', fontWeight: '600', color: '#0F172A'}}>{owner.firstname}</span>
+                                                    <span className={`${styles.ownerBadge} ${styles[owner.role || 'admin']}`}>
+                                                        {owner.role || 'PROPRIO'}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            {!isMe && (
+                                                <button 
+                                                    onClick={() => realOwner?.is_online && startCall(realOwner)}
+                                                    className={styles.iconBtn}
+                                                    title={realOwner?.is_online ? "Appeler" : "Hors ligne"}
+                                                    style={{ 
+                                                        opacity: realOwner?.is_online ? 1 : 0.3, 
+                                                        cursor: realOwner?.is_online ? 'pointer' : 'not-allowed',
+                                                        color: '#3B82F6',
+                                                        marginRight: '8px'
+                                                    }}
+                                                >
+                                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.42 19.42 0 0 1-3.33-2.67m-2.67-3.34a19.79 19.79 0 0 1-3.07-8.63A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91"></path></svg>
+                                                </button>
+                                            )}
+                                        </div>
+                                    ) : null;
+                                })()}
 
                                 {/* Members */}
-                                {activeTeam.members.map(m => (
-                                    <div key={m._id} className={styles.memberItemSmall}>
-                                        <img 
-                                            src={`https://api.dicebear.com/9.x/shapes/svg?seed=${m._id}`}
-                                            className={styles.avatarSmall} 
-                                            alt=""
-                                        />
-                                        <span style={{fontSize: '14px', fontWeight: '500', color: '#475569'}}>{m.firstname}</span>
-                                        {isOwner && (
-                                            <button 
-                                                className={styles.removeMemberBtn} 
-                                                title="Retirer le membre"
-                                                onClick={() => handleRemoveMember(m._id)}
-                                            >
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-                                            </button>
-                                        )}
-                                    </div>
-                                ))}
+                                {activeTeam.members.map(m => {
+                                    const realMember = users.find(u => u._id === m._id) || m;
+                                    const isMe = m._id === currentUser?._id;
+
+                                    return (
+                                        <div key={m._id} className={styles.memberItemSmall}>
+                                            <div style={{display:'flex', alignItems:'center', flex:1}}>
+                                                <img 
+                                                    src={`https://api.dicebear.com/9.x/shapes/svg?seed=${m._id}`}
+                                                    className={styles.avatarSmall} 
+                                                    alt=""
+                                                />
+                                                <span style={{fontSize: '14px', fontWeight: '500', color: '#475569'}}>{m.firstname}</span>
+                                            </div>
+                                            
+                                            <div style={{display:'flex', alignItems:'center'}}>
+                                                {!isMe && (
+                                                    <button 
+                                                        onClick={() => realMember?.is_online && startCall(realMember)}
+                                                        className={styles.iconBtn} 
+                                                        title={realMember?.is_online ? "Appeler" : "Hors ligne"}
+                                                        style={{ 
+                                                            opacity: realMember?.is_online ? 1 : 0.3, 
+                                                            cursor: realMember?.is_online ? 'pointer' : 'not-allowed',
+                                                            color: '#3B82F6',
+                                                            marginRight: '4px'
+                                                        }}
+                                                    >
+                                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.42 19.42 0 0 1-3.33-2.67m-2.67-3.34a19.79 19.79 0 0 1-3.07-8.63A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91"></path></svg>
+                                                    </button>
+                                                )}
+                                                {isOwner && (
+                                                    <button 
+                                                        className={styles.removeMemberBtn} 
+                                                        title="Retirer le membre"
+                                                        onClick={() => handleRemoveMember(m._id)}
+                                                    >
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
                             </div>
                          </div>
                     

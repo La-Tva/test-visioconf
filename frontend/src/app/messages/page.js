@@ -228,7 +228,7 @@ export default function MessagesPage() {
 
                                     <div className={styles.chatTitle}>
                                         <img 
-                                            src={`https://api.dicebear.com/9.x/shapes/svg?seed=${selectedFriend.firstname}`} 
+                                            src={`https://api.dicebear.com/9.x/shapes/svg?seed=${selectedFriend._id}`} 
                                             className={styles.headerAvatar}
                                         />
                                         {selectedFriend.firstname}
@@ -241,14 +241,31 @@ export default function MessagesPage() {
                                     </div>
 
                                     {/* Call Button SVG */}
+                                    {/* Call Button (Updated) */}
                                     <button 
-                                        className={styles.callBtn} 
                                         onClick={handleStartCall}
                                         title="Démarrer un appel vocal"
                                         disabled={!selectedFriend.is_online}
-                                        style={{ opacity: selectedFriend.is_online ? 1 : 0.5, cursor: selectedFriend.is_online ? 'pointer' : 'not-allowed' }}
+                                        style={{ 
+                                            opacity: selectedFriend.is_online ? 1 : 0.5, 
+                                            cursor: selectedFriend.is_online ? 'pointer' : 'not-allowed',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '8px',
+                                            padding: '8px 16px',
+                                            background: '#3B82F6',
+                                            color: 'white',
+                                            border: 'none',
+                                            borderRadius: '999px',
+                                            fontWeight: '600',
+                                            fontSize: '0.9rem',
+                                            transition: 'background 0.2s'
+                                        }}
+                                        onMouseOver={(e) => selectedFriend.is_online && (e.currentTarget.style.background = '#2563EB')}
+                                        onMouseOut={(e) => selectedFriend.is_online && (e.currentTarget.style.background = '#3B82F6')}
                                     >
-                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.42 19.42 0 0 1-3.33-2.67m-2.67-3.34a19.79 19.79 0 0 1-3.07-8.63A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91"></path></svg>
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.42 19.42 0 0 1-3.33-2.67m-2.67-3.34a19.79 19.79 0 0 1-3.07-8.63A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91"></path></svg>
+                                        Appeler
                                     </button>
 
                                     <button type="button" onClick={handleRemoveFriend} className={styles.removeBtn}>

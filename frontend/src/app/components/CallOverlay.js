@@ -4,7 +4,7 @@ import { useCall } from '../context/CallContext';
 import { AnimatePresence, motion } from 'framer-motion';
 
 export default function CallOverlay() {
-    const { callStatus, incomingCall, remoteStream, localStream, answerCall, endCall, rejectCall, callDuration, remoteUser, toggleVideo, toggleAudio, isAudioEnabled } = useCall();
+    const { callStatus, incomingCall, remoteStream, localStream, answerCall, endCall, rejectCall, callDuration, remoteUser, toggleVideo, toggleAudio, isAudioEnabled, toggleScreenShare, isScreenSharing } = useCall();
     const [isMinimized, setIsMinimized] = useState(false);
     const audioRef = useRef(null);
     const remoteVideoRef = useRef(null);
@@ -18,6 +18,17 @@ export default function CallOverlay() {
         window.addEventListener('resize', checkMobile);
         return () => window.removeEventListener('resize', checkMobile);
     }, []);
+
+    // Toggle Fullscreen Logic
+    const toggleFullscreen = () => {
+        if (remoteVideoRef.current) {
+            if (document.fullscreenElement) {
+                document.exitFullscreen().catch(e => console.error("Exit FS Error", e));
+            } else {
+                remoteVideoRef.current.requestFullscreen().catch(e => console.error("Enter FS Error", e));
+            }
+        }
+    };
 
     // Audio Output Logic
     const [audioOutputs, setAudioOutputs] = useState([]);
@@ -166,6 +177,11 @@ export default function CallOverlay() {
                 </>
             ) : (
                 <>
+                    {/* Screen Share */}
+                    <button onClick={toggleScreenShare} title="Partager l'écran" style={{ background: isScreenSharing ? '#EFF6FF' : '#FEF2F2', border: 'none', borderRadius: '8px', width:'40px', height:'40px', display:'flex', alignItems:'center', justifyContent:'center', color: isScreenSharing ? '#3B82F6' : '#64748B', cursor: 'pointer', transition: 'all 0.2s', marginRight: '8px' }}>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M13 3H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-3"></path><polyline points="8 21 12 17 16 21"></polyline><line x1="12" y1="17" x2="12" y2="13"></line><line x1="2" y1="13" x2="22" y2="13"></line></svg>
+                    </button>
+
                     {/* Toggle Video */}
                     <button onClick={toggleVideo} title="Caméra" style={{ background: hasLocalVideo ? '#EFF6FF' : '#FEF2F2', border: 'none', borderRadius: '8px', width:'40px', height:'40px', display:'flex', alignItems:'center', justifyContent:'center', color: hasLocalVideo ? '#3B82F6' : '#EF4444', cursor: 'pointer', transition: 'all 0.2s' }}>
                         {hasLocalVideo ? 
@@ -182,6 +198,14 @@ export default function CallOverlay() {
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="1" y1="1" x2="23" y2="23"></line><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"></path><path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
                         }
                     </button>
+                    
+                    {/* Fullscreen (Only if remote video) */}
+                    {hasRemoteVideo && (
+                         <button onClick={toggleFullscreen} title="Plein écran" style={{ background: '#F8FAFC', border: 'none', borderRadius: '8px', width:'40px', height:'40px', display:'flex', alignItems:'center', justifyContent:'center', color: '#64748B', cursor: 'pointer', transition: 'all 0.2s', marginLeft: '4px' }}>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
+                        </button>
+                    )}
+
                     {/* Hangup */}
                     <button onClick={endCall} title="Raccrocher" style={{ background: '#FEF2F2', border: 'none', borderRadius: '8px', width:'40px', height:'40px', display:'flex', alignItems:'center', justifyContent:'center', color: '#EF4444', cursor: 'pointer' }}>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.42 19.42 0 0 1-3.33-2.67m-2.67-3.34a19.79 19.79 0 0 1-3.07-8.63A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91"></path><line x1="23" y1="1" x2="1" y2="23"></line></svg>

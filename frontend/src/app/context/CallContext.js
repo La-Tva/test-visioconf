@@ -23,6 +23,7 @@ export function CallProvider({ children }) {
     const [callDuration, setCallDuration] = useState(0);
     const [remoteUser, setRemoteUser] = useState(null); // { firstname, picture, _id }
     const [isAudioEnabled, setIsAudioEnabled] = useState(true);
+    const [isScreenSharing, setIsScreenSharing] = useState(false);
 
     const peerConnection = useRef(null);
     const callTimerRef = useRef(null);
@@ -381,8 +382,20 @@ export function CallProvider({ children }) {
     };
 
     const toggleVideo = async () => {
-        if (!localStream) return;
+        if (isScreenSharing) {
+             // If screen sharing, toggling video button probably should Stop Screen Share and Go to Camera? 
+             // Or Stop Everything? 
+             // Let's assume the Video Button acts as "Stop Screen Share & Stop Video" or "Stop Screen Share & Start Camera"?
+             // For simplicity, let's keep toggleVideo as "Camera Toggle". 
+             // If I click Camera while Screen Sharing, maybe it should switch to Camera?
+             // Let's rely on toggleScreenShare for screen logic.
+             // If user clicks "Video" button while sharing, maybe we do nothing or warn?
+             await toggleScreenShare(); // Turn off screen share -> Camera
+             return;
+        }
 
+        if (!localStream) return;
+        // ... existing toggleVideo logic ...
         const videoTrack = localStream.getVideoTracks()[0];
         
         if (videoTrack) {
@@ -394,8 +407,6 @@ export function CallProvider({ children }) {
             const sender = senders.find(s => s.track && s.track.kind === 'video');
             if (sender) peerConnection.current.removeTrack(sender);
             
-            // Inform remote? Removing track triggers negotiation usually
-            // Renegotiate
             handleRenegotiation();
         } else {
             // Enable Video
@@ -414,8 +425,72 @@ export function CallProvider({ children }) {
                 alert("Impossible d'activer la caméra.");
             }
         }
-        // Force update to trigger re-render of layout
         setLocalStream(new MediaStream(localStream.getTracks())); 
+    };
+
+    const toggleScreenShare = async () => {
+        if (isScreenSharing) {
+            // STOP Screen Share -> Switch to Camera
+            const screenTrack = localStream.getVideoTracks()[0];
+            if(screenTrack) screenTrack.stop();
+            setIsScreenSharing(false);
+            
+            // Switch back to Camera
+            try {
+                 const videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                 const camTrack = videoStream.getVideoTracks()[0];
+                 
+                 if (peerConnection.current) {
+                    const senders = peerConnection.current.getSenders();
+                    const videoSender = senders.find(s => s.track && s.track.kind === 'video');
+                    if (videoSender) {
+                        await videoSender.replaceTrack(camTrack);
+                    } else {
+                         peerConnection.current.addTrack(camTrack, localStream);
+                         handleRenegotiation();
+                    }
+                 }
+                 
+                 const audioTracks = localStream ? localStream.getAudioTracks() : [];
+                 setLocalStream(new MediaStream([camTrack, ...audioTracks]));
+            } catch(e) {
+                console.log("Camera access denied or cancelled after screen share");
+                 const audioTracks = localStream ? localStream.getAudioTracks() : [];
+                 setLocalStream(new MediaStream([...audioTracks]));
+            }
+        } else {
+            // START Screen Share
+            try {
+                // High Quality: Request 1080p minimum if possible, or leave default (usually high for screen)
+                const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: { cursor: "always" }, audio: false });
+                const screenTrack = screenStream.getVideoTracks()[0];
+
+                if (!screenTrack) return;
+
+                screenTrack.onended = () => {
+                    // System stop button clicked
+                    if (isScreenSharing) toggleScreenShare(); 
+                };
+
+                // Replace in PC
+                if (peerConnection.current) {
+                    const senders = peerConnection.current.getSenders();
+                    const videoSender = senders.find(s => s.track && s.track.kind === 'video');
+                    if (videoSender) {
+                        await videoSender.replaceTrack(screenTrack);
+                    } else {
+                        peerConnection.current.addTrack(screenTrack, localStream);
+                        handleRenegotiation();
+                    }
+                }
+
+                const audioTracks = localStream ? localStream.getAudioTracks() : [];
+                setLocalStream(new MediaStream([screenTrack, ...audioTracks]));
+                setIsScreenSharing(true);
+            } catch (err) {
+                console.error("Screen Share cancelled/error:", err);
+            }
+        }
     };
 
     const handleRenegotiation = async () => {
@@ -520,7 +595,9 @@ export function CallProvider({ children }) {
             toggleVideo,
             localStream,
             toggleAudio,
-            isAudioEnabled
+            isAudioEnabled,
+            toggleScreenShare,
+            isScreenSharing
         }}>
             {children}
         </CallContext.Provider>

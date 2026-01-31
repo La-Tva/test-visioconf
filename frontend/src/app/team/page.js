@@ -12,6 +12,7 @@ export default function TeamPage() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [teamName, setTeamName] = useState('');
     const [selectedMembers, setSelectedMembers] = useState([]);
+    const [modalSearchTerm, setModalSearchTerm] = useState('');
 
     useEffect(() => {
         const checkMobile = () => setIsMobile(window.innerWidth <= 768);
@@ -582,43 +583,81 @@ export default function TeamPage() {
             {isModalOpen && (
                 <div className={styles.modalOverlay}>
                     <div className={styles.modal}>
-                        <h2 className={styles.modalTitle}>Nouvelle Équipe</h2>
-                        
-                        <div className={styles.inputGroup}>
-                            <label className={styles.label}>Nom de l'équipe</label>
-                            <input 
-                                type="text" 
-                                className={styles.input} 
-                                placeholder="Ex: Projet Alpha"
-                                value={teamName}
-                                onChange={(e) => setTeamName(e.target.value)}
-                            />
+                        <div className={styles.modalHeader}>
+                            <h2 className={styles.modalTitle}>Nouvelle Équipe</h2>
                         </div>
+                        
+                        <div className={styles.modalBody}>
+                            <div className={styles.inputGroup}>
+                                <label className={styles.label}>Nom de l'équipe</label>
+                                <input 
+                                    type="text" 
+                                    className={styles.input} 
+                                    placeholder="Ex: Projet Alpha"
+                                    value={teamName}
+                                    onChange={(e) => setTeamName(e.target.value)}
+                                    autoFocus
+                                />
+                            </div>
 
-                        <div className={styles.inputGroup} style={{flex: 1, display: 'flex', flexDirection: 'column'}}>
-                            <label className={styles.label}>Inviter des membres ({selectedMembers.length})</label>
-                            <div className={styles.userList}>
-                                {potentialMembers.map(user => (
-                                    <label key={user._id} className={styles.userItem}>
-                                        <input 
-                                            type="checkbox" 
-                                            checked={selectedMembers.includes(user._id)}
-                                            onChange={() => toggleMember(user._id)}
-                                        />
-                                        <img 
-                                            src={`https://api.dicebear.com/9.x/shapes/svg?seed=${user._id}`}
-                                            width="24" height="24" 
-                                            style={{borderRadius: '50%', marginRight: '10px'}}
-                                        />
-                                        {user.firstname}
-                                    </label>
-                                ))}
+                            <div className={styles.inputGroup} style={{flex: 1, display: 'flex', flexDirection: 'column'}}>
+                                <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8}}>
+                                    <label className={styles.label} style={{marginBottom:0}}>Inviter des membres ({selectedMembers.length})</label>
+                                </div>
+                                
+                                <div style={{position:'relative', marginBottom: 12}}>
+                                    <svg className={styles.searchIcon} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{left: 12}}>
+                                        <circle cx="11" cy="11" r="8"></circle>
+                                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                    </svg>
+                                    <input 
+                                        type="text" 
+                                        className={styles.modalSearchInput}
+                                        placeholder="Rechercher un membre..."
+                                        value={modalSearchTerm}
+                                        onChange={(e) => setModalSearchTerm(e.target.value)}
+                                    />
+                                </div>
+
+                                <div className={styles.memberGrid}>
+                                    {potentialMembers.filter(u => u.firstname.toLowerCase().includes(modalSearchTerm.toLowerCase())).map(user => {
+                                        const isSelected = selectedMembers.includes(user._id);
+                                        return (
+                                            <div 
+                                                key={user._id} 
+                                                className={`${styles.memberCard} ${isSelected ? styles.memberCardActive : ''}`}
+                                                onClick={() => toggleMember(user._id)}
+                                            >
+                                                <img 
+                                                    src={`https://api.dicebear.com/9.x/shapes/svg?seed=${user._id}`}
+                                                    width="32" height="32" 
+                                                    style={{borderRadius: '10px'}}
+                                                />
+                                                <div style={{display:'flex', flexDirection:'column'}}>
+                                                    <span style={{fontSize:14, fontWeight:600, color:'#0F172A'}}>{user.firstname}</span>
+                                                    <span style={{fontSize:11, color: '#64748B', textTransform:'uppercase', fontWeight:700}}>{user.role || 'Membre'}</span>
+                                                </div>
+                                                
+                                                <div className={styles.checkIcon}>
+                                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                    {potentialMembers.filter(u => u.firstname.toLowerCase().includes(modalSearchTerm.toLowerCase())).length === 0 && (
+                                        <div className={styles.emptyState}>
+                                            Aucun membre trouvé pour "{modalSearchTerm}"
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </div>
 
-                        <div className={styles.modalActions}>
+                        <div className={styles.modalFooter}>
                             <button className={styles.cancelBtn} onClick={() => setIsModalOpen(false)}>Annuler</button>
-                            <button className={styles.submitBtn} onClick={handleCreateTeam}>Créer l'équipe</button>
+                            <button className={styles.submitBtn} onClick={handleCreateTeam} disabled={!teamName.trim() || selectedMembers.length === 0}>
+                                Créer l'équipe
+                            </button>
                         </div>
                     </div>
                 </div>

@@ -25,7 +25,10 @@ mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/visioconf')
     .catch(err => console.error('MongoDB Connection Error:', err));
     
 // Call Tracking
+// Call Tracking
 const activeCalls = new Map(); // socketId -> Set of targetSocketIds
+const activeGroupCalls = new Map(); // teamId -> Set of { socketId, userId, user }
+
 function getActiveCallsCount() {
     let totalPairs = 0;
     activeCalls.forEach(targets => totalPairs += targets.size);
@@ -38,7 +41,18 @@ function broadcastCallCount() {
 }
 
 async function broadcastUserCallStatus(socketId) {
-    const isInCall = activeCalls.has(socketId);
+    let isInCall = activeCalls.has(socketId);
+    
+    // Also check group calls
+    if (!isInCall) {
+        for (const [teamId, participants] of activeGroupCalls) {
+            if ([...participants].some(p => p.socketId === socketId)) {
+                isInCall = true;
+                break;
+            }
+        }
+    }
+
     const User = require('./models/User');
     const user = await User.findOne({ socket_id: socketId });
     if (user) {
@@ -635,6 +649,8 @@ io.on('connection', (socket) => {
             // Handle Get Team Messages
             else if (message.get_team_messages) {
                 const { teamId, userId } = message.get_team_messages; 
+                socket.join(teamId); 
+                console.log(`Socket ${socket.id} joined room ${teamId} via get_team_messages`);
                 try {
                     const Message = require('./models/Message');
                     const Team = require('./models/Team'); 
@@ -1078,27 +1094,129 @@ io.on('connection', (socket) => {
                     const caller = await User.findOne({ socket_id: socket.id });
 
                     if (team && caller) {
-                        const recipients = [...team.members, team.owner];
-                        console.log(`Blast dialing team ${team.name} (${recipients.length} members) from ${caller.firstname}`);
+                        const isOwner = team.owner._id.toString() === caller._id.toString();
+                        const isAlreadyActive = activeGroupCalls.has(teamId);
+
+                        if (!isAlreadyActive && !isOwner) {
+                            console.log(`Unauthorized call start attempt by ${caller.firstname} in team ${team.name}`);
+                            return; // Do not start if not owner and not active
+                        }
+
+                        // Start or Join Group Call Session
+                        if (!activeGroupCalls.has(teamId)) {
+                            activeGroupCalls.set(teamId, new Set());
+                        }
+                        const participants = activeGroupCalls.get(teamId);
                         
+                        // Add caller if not already there
+                        let alreadyIn = false;
+                        participants.forEach(p => { if(p.socketId === socket.id) alreadyIn = true; });
+                        if(!alreadyIn) {
+                            participants.add({ 
+                                socketId: socket.id, 
+                                userId: caller._id, 
+                                user: { firstname: caller.firstname, picture: caller.picture, _id: caller._id } 
+                            });
+                        }
+
+                        const recipients = [...team.members, team.owner];
+                        console.log(`Team call notification for ${team.name} from ${caller.firstname}`);
+                        
+                        // Broadcast the CALL STATUS to the team
                         for (const recipient of recipients) {
-                             // Don't call self
-                             if (recipient._id.toString() !== caller._id.toString() && recipient.socket_id && recipient.is_online) {
-                                 io.to(recipient.socket_id).emit('message', JSON.stringify({
-                                     'call-made': {
-                                         offer: offer,
-                                         socket: socket.id,
-                                         user: { firstname: caller.firstname, picture: caller.picture, _id: caller._id },
-                                         isGroupCall: true, 
-                                         teamName: team.name
-                                     }
-                                 }));
-                             }
+                             if (recipient.socket_id && recipient.is_online) {
+                                  io.to(recipient.socket_id).emit('message', JSON.stringify({
+                                      'team-call-status': {
+                                          teamId: team._id,
+                                          active: true,
+                                          participants: Array.from(participants)
+                                      }
+                                  }));
+                                  
+                                  // If this is the FIRST offer (start of call), notify others to "Answer"
+                                  // But for "Anytime Join", we might prefer a simpler "Call Made" signal
+                                  if (recipient._id.toString() !== caller._id.toString()) {
+                                      io.to(recipient.socket_id).emit('message', JSON.stringify({
+                                          'call-made-group': {
+                                              offer: offer,
+                                              socket: socket.id,
+                                              user: { firstname: caller.firstname, picture: caller.picture, _id: caller._id },
+                                              teamName: team.name,
+                                              teamId: team._id
+                                          }
+                                      }));
+                                  }
                         }
                     }
+                    broadcastUserCallStatus(socket.id);
+                }
                 } catch (e) {
                     console.error('Call team error:', e);
                 }
+            }
+            else if (message['leave-group-call']) {
+                const { teamId } = message['leave-group-call'];
+                if (activeGroupCalls.has(teamId)) {
+                    const participants = activeGroupCalls.get(teamId);
+                    
+                    const Team = require('./models/Team');
+                    const team = await Team.findById(teamId).populate('members').populate('owner');
+                    
+                    if (team) {
+                        // Check if LEAVER is the OWNER
+                        const isOwner = team.owner._id.toString() === caller._id.toString(); // Wait, caller might not be defined here if we don't fetch it
+                        
+                        // We need the user associated with socket first
+                        const User = require('./models/User');
+                        const leaver = await User.findOne({ socket_id: socket.id });
+
+                        if (leaver && team.owner._id.toString() === leaver._id.toString()) {
+                            console.log(`Team Owner ${leaver.firstname} ended the call for team ${team.name}`);
+                            // OWNER LEFT -> END CALL FOR EVERYONE
+                            activeGroupCalls.delete(teamId);
+                            
+                            // Broadcast to team room (everyone viewing the page)
+                            // Send END event first (force close for participants)
+                            io.to(teamId).emit('message', JSON.stringify({
+                                'team-call-ended': { teamId: teamId, reason: 'owner_left' }
+                            }));
+
+                            // Then send STATUS update (hides button for everyone)
+                            io.to(teamId).emit('message', JSON.stringify({
+                                'team-call-status': { teamId: teamId, active: false, participants: [] }
+                            }));
+
+                            broadcastUserCallStatus(socket.id);
+                            return; // Stop further processing
+                        }
+                    }
+
+                    let userToRemove = null;
+                    participants.forEach(p => { if(p.socketId === socket.id) userToRemove = p; });
+                    if (userToRemove) {
+                        participants.delete(userToRemove);
+                        console.log(`User ${socket.id} left team call ${teamId}`);
+                        
+                        // Notify others
+                        if (team) {
+                            const recipients = [...team.members, team.owner];
+                            recipients.forEach(r => {
+                                if (r.socket_id && r.is_online) {
+                                    io.to(r.socket_id).emit('message', JSON.stringify({
+                                        'team-call-status': {
+                                            teamId: team._id,
+                                            active: participants.size > 0,
+                                            participants: Array.from(participants)
+                                        },
+                                        'participant-left': { socket: socket.id, teamId: teamId }
+                                    }));
+                                }
+                            });
+                        }
+                    }
+                    if (participants.size === 0) activeGroupCalls.delete(teamId);
+                }
+                broadcastUserCallStatus(socket.id);
             }
             else if (message['call-user']) {
                 const { to, offer } = message['call-user'];
@@ -1216,6 +1334,44 @@ io.on('connection', (socket) => {
                 } catch (e) {
                     console.error('Reject call error:', e);
                 }
+            }
+            else if (message['call-peer-group']) {
+                const { to, offer, teamId } = message['call-peer-group'];
+                 try {
+                     const User = require('./models/User');
+                     const caller = await User.findOne({ socket_id: socket.id });
+                     
+                     if (activeGroupCalls.has(teamId)) {
+                         console.log(`Forwarding GROUP call offer from ${socket.id} to ${to}`);
+                         io.to(to).emit('message', JSON.stringify({
+                             'call-made-group': {
+                                 offer: offer,
+                                 socket: socket.id, 
+                                 user: caller ? { firstname: caller.firstname, picture: caller.picture, _id: caller._id } : socket.id,
+                                 teamId
+                             }
+                         }));
+                     }
+                 } catch (e) { console.error('Call peer group error:', e); }
+            }
+            else if (message['make-answer-group']) {
+                const { to, answer } = message['make-answer-group'];
+                console.log(`Forwarding GROUP answer to ${to}`);
+                io.to(to).emit('message', JSON.stringify({
+                    'answer-made-group': {
+                        answer: answer,
+                        socket: socket.id
+                    }
+                }));
+            }
+            else if (message['ice-candidate-group']) {
+                const { to, candidate } = message['ice-candidate-group'];
+                io.to(to).emit('message', JSON.stringify({
+                     'ice-candidate-group': {
+                         candidate: candidate,
+                         socket: socket.id
+                     }
+                }));
             }
             else if (message['hang-up']) {
                 const { to } = message['hang-up'];

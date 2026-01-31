@@ -15,6 +15,7 @@ export function SocketProvider({ children }) {
         const ctrl = new Controleur();
         const canal = new CanalSocketio(ctrl, "SocketCanalSingleton", () => {
             console.log("Socket Canal Ready");
+            ctrl.socketID = canal.socket.id; // Expose socket ID
             setIsReady(true);
         });
         

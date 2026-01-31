@@ -115,7 +115,7 @@ export function CallProvider({ children }) {
             traitementMessage: (msg) => {
                  if (msg['call-made']) {
                      const { offer, socket: senderSocket, user } = msg['call-made'];
-                     console.log("Incoming call/renegotiation from:", user);
+                     console.log("Incoming call/renegotiation from:", user, "Offer:", offer);
                      
                      if (callStatus === 'connected' && peerConnection.current) {
                          // Renegotiation
@@ -225,6 +225,11 @@ export function CallProvider({ children }) {
         const friendId = friend._id;
         setRemoteUser(friend);
         try {
+            // Stop existing tracks if any
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+            }
+
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
             setLocalStream(stream);
 
@@ -256,7 +261,7 @@ export function CallProvider({ children }) {
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
 
-            console.log("Sending call offer to:", friendId);
+            console.log("Sending call offer to:", friendId, offer);
             controleur.envoie(callCompRef.current, {
                 'call-user': { offer, to: friendId }
             });
@@ -269,62 +274,16 @@ export function CallProvider({ children }) {
         }
     };
 
-    const startGroupCall = async (team) => {
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-            setLocalStream(stream);
-
-            const pc = new RTCPeerConnection(rtcConfig);
-            activeCallRef.current = { to: null, isCaller: true, isGroup: true, teamId: team._id }; 
-            localCandidateQueue.current = [];
-
-            pc.onicecandidate = (event) => {
-                if(event.candidate) {
-                     if (activeCallRef.current.to) {
-                         // We have a target (someone answered), send directly
-                         controleur.envoie(callCompRef.current, {
-                            'ice-candidate': { candidate: event.candidate, to: activeCallRef.current.to } 
-                        });
-                     } else {
-                         // Buffer
-                         localCandidateQueue.current.push(event.candidate);
-                     }
-                }
-            };
-            
-            pc.ontrack = (event) => {
-                const stream = event.streams[0];
-                if (stream) {
-                     setRemoteStream(new MediaStream(stream.getTracks()));
-                     stream.onremovetrack = () => {
-                         setRemoteStream(new MediaStream(stream.getTracks()));
-                     };
-                }
-            };
-            
-            stream.getTracks().forEach(track => pc.addTrack(track, stream));
-            peerConnection.current = pc;
-
-            const offer = await pc.createOffer();
-            await pc.setLocalDescription(offer);
-
-            console.log("Sending group call offer to team:", team.name);
-            controleur.envoie(callCompRef.current, {
-                'call-team': { offer, teamId: team._id }
-            });
-
-            setCallStatus('calling');
-            playRingtone('outgoing');
-        } catch (err) {
-            console.error("Group Call Error:", err);
-            alert("Erreur lors de l'appel de groupe.");
-        }
-    };
 
     const answerCall = async () => {
         if (!incomingCall) return;
         try {
             stopRingtone();
+             // Stop existing tracks if any
+             if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+            }
+            
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
             setLocalStream(stream);
 
@@ -350,6 +309,12 @@ export function CallProvider({ children }) {
             stream.getTracks().forEach(track => pc.addTrack(track, stream));
             peerConnection.current = pc;
 
+            console.log("Setting Remote Description with offer:", incomingCall.offer);
+            if (!incomingCall.offer || !incomingCall.offer.type) {
+                console.error("Invalid offer received:", incomingCall.offer);
+                alert("Erreur: Offre d'appel invalide.");
+                return;
+            }
             await pc.setRemoteDescription(new RTCSessionDescription(incomingCall.offer));
             // Process queue
             processCandidateQueue();
@@ -420,6 +385,9 @@ export function CallProvider({ children }) {
         } else {
             // Enable Video
             try {
+                // Ensure no conflicting video tracks are active (robustness)
+                localStream.getVideoTracks().forEach(track => track.stop());
+                
                 const videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
                 const track = videoStream.getVideoTracks()[0];
                 localStream.addTrack(track); // Add to local preview
@@ -446,6 +414,9 @@ export function CallProvider({ children }) {
             
             // Switch back to Camera
             try {
+                 // Stop any existing video tracks first
+                 if(localStream) localStream.getVideoTracks().forEach(t => t.stop());
+
                  const videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
                  const camTrack = videoStream.getVideoTracks()[0];
                  
@@ -621,7 +592,7 @@ export function CallProvider({ children }) {
             incomingCall,
             remoteStream,
             startCall,
-            startGroupCall,
+            startCall,
             answerCall,
             endCall,
             rejectCall,

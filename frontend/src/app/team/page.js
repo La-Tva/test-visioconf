@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useSocket } from '../context/SocketContext';
 import { usePreload } from '../context/PreloadContext';
 import { useCall } from '../context/CallContext';
+import { useTeamCall } from '../context/TeamCallContext';
 import { AnimatePresence, motion } from 'framer-motion';
 import styles from './team.module.css';
 
@@ -34,7 +35,8 @@ export default function TeamPage() {
 
     const { users } = usePreload(); 
     const { controleur, isReady } = useSocket();
-    const { startCall, startGroupCall } = useCall();
+    const { startCall } = useCall();
+    const { startTeamCall, joinTeamCall, activeTeamCalls, isBusy } = useTeamCall();
     const teamCompRef = useRef(null);
     const messagesEndRef = useRef(null);
     const activeTeamRef = useRef(activeTeam);
@@ -392,9 +394,44 @@ export default function TeamPage() {
                              <h2 className={styles.chatTitle}>{activeTeam.name}</h2>
                              
                              <div className={styles.headerActions}>
-                                 <button onClick={() => startGroupCall(activeTeam)} className={styles.iconBtn} title="Lancer un appel de groupe" style={{color:'#3B82F6', marginRight:4}}>
-                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.42 19.42 0 0 1-3.33-2.67m-2.67-3.34a19.79 19.79 0 0 1-3.07-8.63A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91"></path></svg>
-                                 </button>
+                                 {activeTeamCalls[activeTeam._id]?.active ? (
+                                    <button 
+                                        onClick={() => joinTeamCall(activeTeam._id)} 
+                                        disabled={isBusy}
+                                        title={isBusy ? "Connexion..." : "Rejoindre l'appel en cours"} 
+                                        style={{
+                                            background: '#10B981', 
+                                            color: 'white', 
+                                            padding: '0 24px', 
+                                            borderRadius: '24px',
+                                            marginRight: 12,
+                                            border: 'none',
+                                            boxShadow: '0 0 20px rgba(16, 185, 129, 0.4)',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '10px',
+                                            height: '44px',
+                                            animation: isBusy ? 'none' : 'pulse 2s infinite',
+                                            fontWeight: 700,
+                                            fontSize: '0.9rem',
+                                            letterSpacing: '0.05em',
+                                            cursor: isBusy ? 'not-allowed' : 'pointer',
+                                            transition: 'transform 0.2s',
+                                            opacity: isBusy ? 0.7 : 1
+                                        }}
+                                        onMouseOver={(e) => e.target.style.transform = 'scale(1.05)'}
+                                        onMouseOut={(e) => e.target.style.transform = 'scale(1)'}
+                                    >
+                                        REJOINDRE
+                                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M15 10l-4 4l6 6l4 -16l-18 7l4 2l2 6l3 -4"></path></svg>
+                                    </button>
+                                 ) : (
+                                     isOwner && (
+                                         <button onClick={() => startTeamCall(activeTeam._id)} className={styles.iconBtn} title="Lancer un appel de groupe" style={{color:'#3B82F6', marginRight:4}}>
+                                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.42 19.42 0 0 1-3.33-2.67m-2.67-3.34a19.79 19.79 0 0 1-3.07-8.63A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91"></path></svg>
+                                         </button>
+                                     )
+                                 )}
                                  <button onClick={() => setShowMembersList(!showMembersList)} className={`${styles.iconBtn} ${showMembersList ? styles.activeIconBtn : ''}`} title="Voir les membres">
                                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
                                  </button>

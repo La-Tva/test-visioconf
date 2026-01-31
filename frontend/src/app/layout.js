@@ -5,7 +5,9 @@ import GlobalComponents from "./components/GlobalComponents";
 import { SocketProvider } from "./context/SocketContext";
 import { PreloadProvider } from "./context/PreloadContext";
 import { CallProvider } from "./context/CallContext";
+import { TeamCallProvider } from "./context/TeamCallContext";
 import CallOverlay from "./components/CallOverlay";
+import TeamCallOverlay from "./components/TeamCallOverlay";
 
 const bricolage = Bricolage_Grotesque({
   variable: "--font-bricolage",
@@ -38,10 +40,13 @@ export default function RootLayout({ children }) {
         <SocketProvider>
             <PreloadProvider>
                 <CallProvider>
-                    <CallOverlay />
-                    <GlobalRequestHandler />
-                    <GlobalComponents />
-                    {children}
+                    <TeamCallProvider>
+                        <CallOverlay />
+                        <TeamCallOverlay />
+                        <GlobalRequestHandler />
+                        <GlobalComponents />
+                        {children}
+                    </TeamCallProvider>
                 </CallProvider>
             </PreloadProvider>
         </SocketProvider>

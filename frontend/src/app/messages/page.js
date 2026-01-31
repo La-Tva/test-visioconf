@@ -141,7 +141,7 @@ export default function MessagesPage() {
 
     const handleStartCall = () => {
         if (selectedFriend && selectedFriend.is_online) {
-            startCall(selectedFriend._id);
+            startCall(selectedFriend);
         }
     };
 

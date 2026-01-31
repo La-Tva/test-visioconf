@@ -1019,13 +1019,17 @@ io.on('connection', (socket) => {
                 try {
                     const User = require('./models/User');
                     const targetUser = await User.findById(to); // 'to' is userId here
+                    
+                    // Find Caller details
+                    const caller = await User.findOne({ socket_id: socket.id });
+
                     if (targetUser && targetUser.socket_id) {
-                         console.log(`Forwarding call offer from ${socket.id} to ${targetUser.firstname} (${targetUser.socket_id})`);
+                         console.log(`Forwarding call offer from ${caller ? caller.firstname : socket.id} to ${targetUser.firstname} (${targetUser.socket_id})`);
                          io.to(targetUser.socket_id).emit('message', JSON.stringify({
                              'call-made': {
                                  offer: offer,
-                                 socket: socket.id, // Send caller's socket ID so receiver knows who to answer
-                                 user: socket.id // We might want to send user details instead of just socket ID if possible, but socket is needed for reply
+                                 socket: socket.id, 
+                                 user: caller ? { firstname: caller.firstname, picture: caller.picture, _id: caller._id } : socket.id
                              }
                          }));
                     } else {
@@ -1038,11 +1042,16 @@ io.on('connection', (socket) => {
             else if (message['make-answer']) {
                 const { to, answer } = message['make-answer']; // 'to' is socketId here (from 'call-made')
                 try {
+                    const User = require('./models/User');
+                    // Find Answerer details
+                    const answerer = await User.findOne({ socket_id: socket.id });
+
                     console.log(`Forwarding call answer to ${to}`);
                     io.to(to).emit('message', JSON.stringify({
                         'answer-made': {
                             socket: socket.id,
-                            answer: answer
+                            answer: answer,
+                             user: answerer ? { firstname: answerer.firstname, picture: answerer.picture, _id: answerer._id } : socket.id
                         }
                     }));
                 } catch (e) {
@@ -1082,6 +1091,47 @@ io.on('connection', (socket) => {
                 }
             }
             
+            else if (message['reject-call']) {
+                const { to } = message['reject-call'];
+                try {
+                     io.to(to).emit('message', JSON.stringify({
+                         'call-rejected': {
+                             socket: socket.id
+                         }
+                     }));
+                } catch (e) {
+                    console.error('Reject call error:', e);
+                }
+            }
+            else if (message['hang-up']) {
+                const { to } = message['hang-up'];
+                try {
+                     if (!to) {
+                         // Valid case if user hangs up before call starts or if state is lost? 
+                         // Just ignore or log warn.
+                         console.log("Hang-up received with no target.");
+                         return;
+                     }
+
+                     // Check if 'to' is a socket ID or User ID
+                     if (typeof to === 'string' && to.match(/^[0-9a-fA-F]{24}$/)) {
+                          const User = require('./models/User');
+                          const targetUser = await User.findById(to);
+                          if (targetUser && targetUser.socket_id) {
+                               io.to(targetUser.socket_id).emit('message', JSON.stringify({
+                                  'call-ended': { socket: socket.id }
+                               }));
+                          }
+                     } else if (to) {
+                          io.to(to).emit('message', JSON.stringify({
+                              'call-ended': { socket: socket.id }
+                          }));
+                     }
+                } catch (e) {
+                    console.error('Hang up error:', e);
+                }
+            }
+
             else {
                  // Determine where to route other messages
                  // For now, echo or specific logic could go here
@@ -1106,8 +1156,8 @@ io.on('connection', (socket) => {
         socket.on('demande_liste', () => {
         console.log('Received demande_liste');
         const listes = {
-            emission: ['login_status', 'registration_status', 'users', 'user_updating status', 'user_deleting_status', 'receive_friend_request', 'friend_request_accepted', 'messages', 'friends', 'auth status', 'friend_removed', 'last_messages', 'user_status_changed', 'user_registered', 'user_updated', 'user_deleted', 'team_creating_status', 'teams', 'receive_team_message', 'team_messages', 'leave_team_status', 'team_deleting_status', 'team_updating_status', 'files', 'file_uploading_status', 'file_updating_status', 'file_deleting_status', 'spaces', 'space_creating_status', 'space_deleting_status', 'call-made', 'answer-made', 'ice-candidate'],
-            abonnement: ['login', 'register', 'get users', 'update user', 'delete_user', 'friend_request', 'friend_response', 'send message', 'get messages', 'get friends', 'authenticate', 'remove_friend', 'get_last_messages', 'create team', 'get teams', 'team_message', 'get_team_messages', 'leave_team', 'delete team', 'add_team_member', 'remove_team_member', 'get_files', 'get file', 'upload_file', 'update file', 'delete_file', 'create_space', 'get_spaces', 'delete_space', 'call-user', 'make-answer', 'ice-candidate']
+            emission: ['login_status', 'registration_status', 'users', 'user_updating status', 'user_deleting_status', 'receive_friend_request', 'friend_request_accepted', 'messages', 'friends', 'auth status', 'friend_removed', 'last_messages', 'user_status_changed', 'user_registered', 'user_updated', 'user_deleted', 'team_creating_status', 'teams', 'receive_team_message', 'team_messages', 'leave_team_status', 'team_deleting_status', 'team_updating_status', 'files', 'file_uploading_status', 'file_updating_status', 'file_deleting_status', 'spaces', 'space_creating_status', 'space_deleting_status', 'call-made', 'answer-made', 'ice-candidate', 'call-rejected', 'call-ended'],
+            abonnement: ['login', 'register', 'get users', 'update user', 'delete_user', 'friend_request', 'friend_response', 'send message', 'get messages', 'get friends', 'authenticate', 'remove_friend', 'get_last_messages', 'create team', 'get teams', 'team_message', 'get_team_messages', 'leave_team', 'delete team', 'add_team_member', 'remove_team_member', 'get_files', 'get file', 'upload_file', 'update file', 'delete_file', 'create_space', 'get_spaces', 'delete_space', 'call-user', 'make-answer', 'ice-candidate', 'reject-call', 'hang-up']
         };
         socket.emit('donne_liste', JSON.stringify(listes));
     });

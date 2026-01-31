@@ -21,12 +21,14 @@ export function CallProvider({ children }) {
     const [remoteStream, setRemoteStream] = useState(null);
     const [localStream, setLocalStream] = useState(null);
     const [callDuration, setCallDuration] = useState(0);
+    const [remoteUser, setRemoteUser] = useState(null); // { firstname, picture, _id }
 
     const peerConnection = useRef(null);
     const callTimerRef = useRef(null);
     const ringtoneAudioRef = useRef(null); // Changed to Audio element
     const callCompRef = useRef(null);
     const candidateQueue = useRef([]); // ICE Candidate Queue
+    const activeCallRef = useRef(null); // { to: socketId | userId, isCaller: boolean }
 
     // --- Ringtone Logic (File Based) ---
     const playRingtone = (type = 'incoming') => {
@@ -99,6 +101,8 @@ export function CallProvider({ children }) {
         }
     };
 
+
+
     // --- Socket Listeners ---
     useEffect(() => {
         if (!controleur || !isReady) return;
@@ -111,20 +115,29 @@ export function CallProvider({ children }) {
                      console.log("Incoming call from:", user);
                      if (callStatus === 'idle') {
                          setIncomingCall({ offer, socket: senderSocket, user });
+                         if(user) setRemoteUser(user);
                          setCallStatus('receiving');
                          playRingtone('incoming');
+                         activeCallRef.current = { to: senderSocket, isCaller: false };
+                     } else {
+                         // Busy? Auto-reject?
                      }
                  }
                  else if (msg['answer-made']) {
-                     const { answer } = msg['answer-made'];
+                     const { answer, socket: answererSocket, user } = msg['answer-made'];
                      console.log("Call accepted, answer received.");
                      if (peerConnection.current) {
+                         // Store answerer socket if not already there (though we likely used userId on start)
+                         // For signaling future events like hang-up, explicit socket is better if we have it
+                         activeCallRef.current = { ...activeCallRef.current, to: answererSocket || activeCallRef.current.to };
+                         if (user) setRemoteUser(user); 
+                         
                          peerConnection.current.setRemoteDescription(new RTCSessionDescription(answer))
                             .then(() => {
                                 setCallStatus('connected');
                                 stopRingtone();
                                 startCallTimer();
-                                processCandidateQueue(); // Process any queued candidates
+                                processCandidateQueue(); 
                             })
                             .catch(e => console.error("Error setting remote answer:", e));
                      }
@@ -137,24 +150,34 @@ export function CallProvider({ children }) {
                                 .catch(e => console.error("Error adding candidate:", e));
                          } else {
                              // Queue candidate
-                             console.log("Queueing ICE candidate (no remote description yet)");
                              candidateQueue.current.push(candidate);
                          }
                      }
+                 }
+                 else if (msg['call-rejected']) {
+                     console.log("Call rejected by remote.");
+                     stopRingtone();
+                     cleanupCall();
+                     alert("Appel refusé.");
+                 }
+                 else if (msg['call-ended']) {
+                     console.log("Call ended by remote.");
+                     stopRingtone();
+                     cleanupCall();
                  }
             }
         };
         callCompRef.current = callComp;
 
         controleur.inscription(callComp, 
-            ['call-user', 'make-answer', 'ice-candidate'], 
-            ['call-made', 'answer-made', 'ice-candidate']
+            ['call-user', 'make-answer', 'ice-candidate', 'reject-call', 'hang-up'], 
+            ['call-made', 'answer-made', 'ice-candidate', 'call-rejected', 'call-ended']
         );
 
         return () => {
             controleur.desincription(callComp, 
-                ['call-user', 'make-answer', 'ice-candidate'], 
-                ['call-made', 'answer-made', 'ice-candidate']
+                ['call-user', 'make-answer', 'ice-candidate', 'reject-call', 'hang-up'], 
+                ['call-made', 'answer-made', 'ice-candidate', 'call-rejected', 'call-ended']
             );
         };
     }, [controleur, isReady, callStatus]);
@@ -163,17 +186,20 @@ export function CallProvider({ children }) {
 
     // ... (createPeerConnection matches previous logic mostly but let's inline it to be safe)
 
-    const startCall = async (friendId) => {
+    const startCall = async (friend) => {
+        const friendId = friend._id;
+        setRemoteUser(friend);
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
             setLocalStream(stream);
 
             const pc = new RTCPeerConnection(rtcConfig);
-            
+            activeCallRef.current = { to: friendId, isCaller: true }; // Store UserID initially
+
             pc.onicecandidate = (event) => {
                 if(event.candidate) {
                      controleur.envoie(callCompRef.current, {
-                        'ice-candidate': { candidate: event.candidate, to: friendId } // friendId is UserID
+                        'ice-candidate': { candidate: event.candidate, to: friendId } 
                     });
                 }
             };
@@ -209,11 +235,8 @@ export function CallProvider({ children }) {
             setLocalStream(stream);
 
             const pc = new RTCPeerConnection(rtcConfig);
-            
              pc.onicecandidate = (event) => {
                 if(event.candidate) {
-                     // CAREFUL: incomingCall.socket might be socketID or userID depending on what server sent
-                     // Generally for answers we target the Specific Socket that called us
                      controleur.envoie(callCompRef.current, {
                         'ice-candidate': { candidate: event.candidate, to: incomingCall.socket }
                     });
@@ -228,8 +251,7 @@ export function CallProvider({ children }) {
             peerConnection.current = pc;
 
             await pc.setRemoteDescription(new RTCSessionDescription(incomingCall.offer));
-            // Process queue immediately after modifying remote description? 
-            // Better to wait for answer creation? No, we can process incoming candidates now that we have an offer.
+            // Process queue
             processCandidateQueue();
 
             const answer = await pc.createAnswer();
@@ -248,7 +270,18 @@ export function CallProvider({ children }) {
         }
     };
 
-    const endCall = () => {
+    const rejectCall = () => {
+        if (incomingCall && controleur) {
+            stopRingtone();
+            console.log("Rejecting call from:", incomingCall.socket);
+            controleur.envoie(callCompRef.current, {
+                'reject-call': { to: incomingCall.socket }
+            });
+            cleanupCall();
+        }
+    };
+
+    const cleanupCall = () => {
         stopRingtone();
         if (localStream) {
             localStream.getTracks().forEach(track => track.stop());
@@ -261,8 +294,21 @@ export function CallProvider({ children }) {
         setRemoteStream(null);
         setIncomingCall(null);
         setCallStatus('idle');
-        candidateQueue.current = []; // Clear queue
+        candidateQueue.current = [];
+        activeCallRef.current = null;
+        setRemoteUser(null);
         clearInterval(callTimerRef.current);
+    }
+
+    const endCall = () => {
+        // Send hangup signal
+        if (activeCallRef.current && controleur) {
+            console.log("Hanging up on:", activeCallRef.current.to);
+            controleur.envoie(callCompRef.current, {
+                'hang-up': { to: activeCallRef.current.to }
+            });
+        }
+        cleanupCall();
     };
 
     // Timer Logic
@@ -306,7 +352,9 @@ export function CallProvider({ children }) {
             startCall,
             answerCall,
             endCall,
-            callDuration
+            rejectCall,
+            callDuration,
+            remoteUser
         }}>
             {children}
         </CallContext.Provider>

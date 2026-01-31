@@ -4,7 +4,7 @@ import { useCall } from '../context/CallContext';
 import { AnimatePresence, motion } from 'framer-motion';
 
 export default function CallOverlay() {
-    const { callStatus, incomingCall, remoteStream, answerCall, endCall, callDuration } = useCall();
+    const { callStatus, incomingCall, remoteStream, answerCall, endCall, rejectCall, callDuration, remoteUser } = useCall();
     const audioRef = useRef(null);
 
     // Auto-play remote audio when stream is available
@@ -21,6 +21,25 @@ export default function CallOverlay() {
     };
 
     if (callStatus === 'idle') return null;
+
+    const getDisplayName = () => {
+        if (remoteUser?.firstname) return remoteUser.firstname;
+        return "Inconnu";
+    }
+
+    const getImageSrc = () => {
+        if (remoteUser?.picture) {
+            // Assuming pictures are in /uploads/ or assuming they are just filenames?
+            // If they are local files or URLs. In User.js schema it seems to be just filename likely.
+            // Let's assume /assets/avatars/ or /uploads/.
+            // Checking previous files, it seems "default_profile_picture.png" is used.
+            // Let's try /assets/avatars/ + picture first or just / + picture if simpler
+            // Actually, let's look at how other components render pictures.
+            // Profile page usually does: src={`/assets/avatars/${user.picture}`}
+            return `/assets/avatars/${remoteUser.picture}`;
+        }
+        return `https://api.dicebear.com/9.x/shapes/svg?seed=${incomingCall?.socket || 'user'}`;
+    }
 
     return (
         <AnimatePresence>
@@ -69,16 +88,17 @@ export default function CallOverlay() {
                             }} />
                         )}
                         <img 
-                            src={`https://api.dicebear.com/9.x/shapes/svg?seed=${incomingCall?.socket || 'user'}`} 
-                            style={{ width: '96px', height: '96px', borderRadius: '50%', background: '#F1F5F9', position:'relative', zIndex:2 }}
+                            src={getImageSrc()} 
+                            onError={(e) => e.target.src = `https://api.dicebear.com/9.x/shapes/svg?seed=${remoteUser?._id || 'user'}`}
+                            style={{ width: '96px', height: '96px', borderRadius: '50%', background: '#F1F5F9', position:'relative', zIndex:2, objectFit: 'cover' }}
                         />
                     </div>
 
                     {/* --- Status Text --- */}
-                    <h3 style={{ margin: '0 0 8px 0', fontFamily: 'var(--font-bricolage)', fontSize: '1.5rem', color: '#0F172A' }}>
-                        {callStatus === 'receiving' ? 'Appel Entrant...' : 
-                         callStatus === 'calling' ? 'Appel en cours...' : 
-                         'En ligne'}
+                    <h3 style={{ margin: '0 0 8px 0', fontFamily: 'var(--font-bricolage)', fontSize: '1.5rem', color: '#0F172A', textAlign: 'center' }}>
+                        {callStatus === 'receiving' ? `${getDisplayName()} appelle...` : 
+                         callStatus === 'calling' ? `Appel vers ${getDisplayName()}...` : 
+                         getDisplayName()}
                     </h3>
                     
                     <p style={{ margin: '0 0 32px 0', color: '#64748B' }}>
@@ -102,7 +122,7 @@ export default function CallOverlay() {
                         )}
                         
                         <button 
-                            onClick={endCall}
+                            onClick={callStatus === 'receiving' ? rejectCall : endCall}
                             style={{
                                 width: '64px', height: '64px', borderRadius: '50%', border: 'none',
                                 background: '#EF4444', color: 'white', cursor: 'pointer',

@@ -459,18 +459,27 @@ export function CallProvider({ children }) {
                  setLocalStream(new MediaStream([...audioTracks]));
             }
         } else {
-            // Check support with fallbacks
-            const getDisplayMedia = navigator.mediaDevices?.getDisplayMedia?.bind(navigator.mediaDevices) || 
-                                    navigator.getDisplayMedia?.bind(navigator);
+            // Robust detection
+            let getDisplayMedia = null;
+            if (navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
+                getDisplayMedia = (c) => navigator.mediaDevices.getDisplayMedia(c);
+            } else if (navigator.getDisplayMedia) {
+                getDisplayMedia = (c) => navigator.getDisplayMedia(c);
+            }
 
             if (!getDisplayMedia) {
-                alert("Le partage d'écran n'est pas fourni par ce navigateur mobile (limitation constructeur). Essayez Chrome ou Safari directement.");
+                const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+                if (isIOS) {
+                    alert("iOS (Safari) restreint le partage d'écran. \n\nSolutions :\n1. Vérifiez que vous êtes sur iOS 15.1+\n2. Utilisez l'app Safari directement (pas via une autre app)\n3. Tentez 'Ajouter sur l'écran d'accueil' (PWA).");
+                } else {
+                    alert("Le partage d'écran n'est pas fourni par ce navigateur mobile (limitation constructeur).");
+                }
                 return;
             }
 
             // START Screen Share
             try {
-                // Simplified constraints for mobile (no cursor)
+                // Simplified constraints for mobile
                 const constraints = { 
                     video: true, 
                     audio: false 

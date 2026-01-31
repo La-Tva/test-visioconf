@@ -129,14 +129,14 @@ export default function CallOverlay() {
     // --- Panel Design Styles ---
     const panelContainerStyle = isMinimized ? {
         position: 'fixed',
-        top: '74px', left: '0', right: '0',
+        top: '69px', left: '0', right: '0',
         width: 'auto', height: 'auto',
         zIndex: 9999,
         pointerEvents: 'none',
         display: 'flex', justifyContent: 'center',
     } : {
         position: 'fixed',
-        top: isMobile ? '50px' : '74px', 
+        top: isMobile ? '45px' : '69px', 
         left: isMobile ? '0' : '0', 
         right: isMobile ? '0' : '0', 
         bottom: isMobile ? '0' : undefined,
@@ -162,7 +162,7 @@ export default function CallOverlay() {
         background: isMobile ? '#000' : '#FFFFFF', 
         width: isMobile ? '100vw' : '100%', 
         maxWidth: isMobile ? '100vw' : '900px', 
-        height: isMobile ? 'calc(100vh - 50px)' : 'auto',
+        height: isMobile ? 'calc(100vh - 45px)' : 'auto',
         borderRadius: isMobile ? '24px 24px 0 0' : '24px', 
         overflow: 'hidden',
         boxShadow: isMobile ? 'none' : '0 25px 50px -12px rgba(0, 0, 0, 0.15)', 

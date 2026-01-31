@@ -1014,6 +1014,74 @@ io.on('connection', (socket) => {
                 }
             }
 
+            else if (message['call-user']) {
+                const { to, offer } = message['call-user'];
+                try {
+                    const User = require('./models/User');
+                    const targetUser = await User.findById(to); // 'to' is userId here
+                    if (targetUser && targetUser.socket_id) {
+                         console.log(`Forwarding call offer from ${socket.id} to ${targetUser.firstname} (${targetUser.socket_id})`);
+                         io.to(targetUser.socket_id).emit('message', JSON.stringify({
+                             'call-made': {
+                                 offer: offer,
+                                 socket: socket.id, // Send caller's socket ID so receiver knows who to answer
+                                 user: socket.id // We might want to send user details instead of just socket ID if possible, but socket is needed for reply
+                             }
+                         }));
+                    } else {
+                        console.log(`Target user ${to} for call not found or offline.`);
+                    }
+                } catch (e) {
+                    console.error('Call user error:', e);
+                }
+            }
+            else if (message['make-answer']) {
+                const { to, answer } = message['make-answer']; // 'to' is socketId here (from 'call-made')
+                try {
+                    console.log(`Forwarding call answer to ${to}`);
+                    io.to(to).emit('message', JSON.stringify({
+                        'answer-made': {
+                            socket: socket.id,
+                            answer: answer
+                        }
+                    }));
+                } catch (e) {
+                    console.error('Make answer error:', e);
+                }
+            }
+            else if (message['ice-candidate']) {
+                const { to, candidate } = message['ice-candidate']; 
+                // 'to' can be userId (initial offer) OR socketId (subsequent exchange)
+                // We need to handle both or standardize.
+                // CallContext sends userId for offer candidates and socketId for answer candidates.
+                
+                try {
+                     // Check if 'to' looks like a Mongo ID (24 hex chars) -> User ID
+                     if (to.match(/^[0-9a-fA-F]{24}$/)) {
+                         const User = require('./models/User');
+                         const targetUser = await User.findById(to);
+                         if (targetUser && targetUser.socket_id) {
+                             io.to(targetUser.socket_id).emit('message', JSON.stringify({
+                                 'ice-candidate': {
+                                     candidate: candidate,
+                                     socket: socket.id
+                                 }
+                             }));
+                         }
+                     } else {
+                         // Assume it's a socket ID
+                         io.to(to).emit('message', JSON.stringify({
+                             'ice-candidate': {
+                                 candidate: candidate,
+                                 socket: socket.id
+                             }
+                         }));
+                     }
+                } catch (e) {
+                     console.error('ICE candidate error:', e);
+                }
+            }
+            
             else {
                  // Determine where to route other messages
                  // For now, echo or specific logic could go here
@@ -1027,16 +1095,19 @@ io.on('connection', (socket) => {
 
     socket.on('disconnect', async () => {
         console.log('User disconnected:', socket.id);
-        // Optional: Update user offline status
-        await User.findOneAndUpdate({ socket_id: socket.id }, { is_online: false });
+        const user = await User.findOne({ socket_id: socket.id });
+        if (user) {
+            user.is_online = false;
+            user.last_seen = Date.now();
+            await user.save();
+        }
     });
-
     // Handshake for CanalSocketio
         socket.on('demande_liste', () => {
         console.log('Received demande_liste');
         const listes = {
-            emission: ['login_status', 'registration_status', 'users', 'user_updating status', 'user_deleting_status', 'receive_friend_request', 'friend_request_accepted', 'messages', 'friends', 'auth status', 'friend_removed', 'last_messages', 'user_status_changed', 'user_registered', 'user_updated', 'user_deleted', 'team_creating_status', 'teams', 'receive_team_message', 'team_messages', 'leave_team_status', 'team_deleting_status', 'team_updating_status', 'files', 'file_uploading_status', 'file_updating_status', 'file_deleting_status', 'spaces', 'space_creating_status', 'space_deleting_status'],
-            abonnement: ['login', 'register', 'get users', 'update user', 'delete_user', 'friend_request', 'friend_response', 'send message', 'get messages', 'get friends', 'authenticate', 'remove_friend', 'get_last_messages', 'create team', 'get teams', 'team_message', 'get_team_messages', 'leave_team', 'delete team', 'add_team_member', 'remove_team_member', 'get_files', 'get file', 'upload_file', 'update file', 'delete_file', 'create_space', 'get_spaces', 'delete_space']
+            emission: ['login_status', 'registration_status', 'users', 'user_updating status', 'user_deleting_status', 'receive_friend_request', 'friend_request_accepted', 'messages', 'friends', 'auth status', 'friend_removed', 'last_messages', 'user_status_changed', 'user_registered', 'user_updated', 'user_deleted', 'team_creating_status', 'teams', 'receive_team_message', 'team_messages', 'leave_team_status', 'team_deleting_status', 'team_updating_status', 'files', 'file_uploading_status', 'file_updating_status', 'file_deleting_status', 'spaces', 'space_creating_status', 'space_deleting_status', 'call-made', 'answer-made', 'ice-candidate'],
+            abonnement: ['login', 'register', 'get users', 'update user', 'delete_user', 'friend_request', 'friend_response', 'send message', 'get messages', 'get friends', 'authenticate', 'remove_friend', 'get_last_messages', 'create team', 'get teams', 'team_message', 'get_team_messages', 'leave_team', 'delete team', 'add_team_member', 'remove_team_member', 'get_files', 'get file', 'upload_file', 'update file', 'delete_file', 'create_space', 'get_spaces', 'delete_space', 'call-user', 'make-answer', 'ice-candidate']
         };
         socket.emit('donne_liste', JSON.stringify(listes));
     });

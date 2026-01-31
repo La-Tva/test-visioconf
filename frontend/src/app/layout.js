@@ -4,6 +4,8 @@ import GlobalRequestHandler from "./components/GlobalRequestHandler";
 import GlobalComponents from "./components/GlobalComponents";
 import { SocketProvider } from "./context/SocketContext";
 import { PreloadProvider } from "./context/PreloadContext";
+import { CallProvider } from "./context/CallContext";
+import CallOverlay from "./components/CallOverlay";
 
 const bricolage = Bricolage_Grotesque({
   variable: "--font-bricolage",
@@ -35,9 +37,12 @@ export default function RootLayout({ children }) {
       <body className={`${bricolage.variable} ${jakarta.variable}`}>
         <SocketProvider>
             <PreloadProvider>
-                <GlobalRequestHandler />
-                <GlobalComponents />
-                {children}
+                <CallProvider>
+                    <CallOverlay />
+                    <GlobalRequestHandler />
+                    <GlobalComponents />
+                    {children}
+                </CallProvider>
             </PreloadProvider>
         </SocketProvider>
       </body>

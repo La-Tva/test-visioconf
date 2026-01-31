@@ -2,16 +2,28 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useSocket } from '../context/SocketContext';
 import { usePreload } from '../context/PreloadContext';
+import { useCall } from '../context/CallContext';
 import { AnimatePresence, motion } from 'framer-motion';
 import styles from './messages.module.css';
 
 export default function MessagesPage() {
     const [friends, setFriends] = useState([]);
-    const [isMobile, setIsMobile] = useState(false); // Mobile detection
+    const [isMobile, setIsMobile] = useState(false);
     const [selectedFriend, setSelectedFriend] = useState(null);
     const [messages, setMessages] = useState([]);
     const [inputMessage, setInputMessage] = useState('');
+    const [currentUser, setCurrentUser] = useState(null);
+    const [searchTerm, setSearchTerm] = useState('');
 
+    const { friends: preloadedFriends, refreshData, markAsRead, setCurrentChatId } = usePreload();
+    const { controleur, isReady } = useSocket();
+    const { startCall } = useCall(); 
+
+    const messagesCompRef = useRef(null);
+    const messagesEndRef = useRef(null);
+    const selectedFriendRef = useRef(null);
+
+    // Mobile Check
     useEffect(() => {
         const checkMobile = () => setIsMobile(window.innerWidth <= 768);
         checkMobile();
@@ -19,16 +31,7 @@ export default function MessagesPage() {
         return () => window.removeEventListener('resize', checkMobile);
     }, []);
 
-    const [currentUser, setCurrentUser] = useState(null);
-    const [searchTerm, setSearchTerm] = useState('');
-
-    const { friends: preloadedFriends, refreshData, markAsRead, setCurrentChatId } = usePreload();
-    const { controleur, isReady } = useSocket();
-    const messagesCompRef = useRef(null);
-    const messagesEndRef = useRef(null);
-    const selectedFriendRef = useRef(null);
-
-    // Keep ref in sync for socket callback AND global context
+    // Sync Ref
     useEffect(() => {
         selectedFriendRef.current = selectedFriend;
         if(selectedFriend) {
@@ -45,11 +48,10 @@ export default function MessagesPage() {
     useEffect(scrollToBottom, [messages]);
 
     useEffect(() => {
-        if(preloadedFriends) {
-            setFriends(preloadedFriends);
-        }
+        if(preloadedFriends) setFriends(preloadedFriends);
     }, [preloadedFriends]);
 
+    // Socket Init
     useEffect(() => {
         const userStr = localStorage.getItem('user');
         if (!userStr) {
@@ -71,7 +73,6 @@ export default function MessagesPage() {
                      const newMsg = msg.receive_private_message;
                      setMessages(prev => [...prev, newMsg]);
 
-                     // If we are looking at this chat, mark as read immediately
                      if (selectedFriendRef.current && selectedFriendRef.current._id === newMsg.sender) {
                          markAsRead(newMsg.sender);
                      }
@@ -98,16 +99,10 @@ export default function MessagesPage() {
 
     }, [controleur, isReady, refreshData, markAsRead]);
 
-    const displayedMessages = messages.filter(m => 
-        selectedFriend && (
-            (m.sender === currentUser?._id && m.receiver === selectedFriend._id) ||
-            (m.sender === selectedFriend._id && m.receiver === currentUser?._id)
-        )
-    );
-
+    // --- Helpers ---
     const handleSelectFriend = (friend) => {
         setSelectedFriend(friend);
-        markAsRead(friend._id); // Mark as read when opening
+        markAsRead(friend._id);
         if (controleur && messagesCompRef.current && currentUser) {
             controleur.envoie(messagesCompRef.current, {
                 'get messages': {
@@ -144,7 +139,11 @@ export default function MessagesPage() {
         setInputMessage('');
     };
 
-
+    const handleStartCall = () => {
+        if (selectedFriend && selectedFriend.is_online) {
+            startCall(selectedFriend._id);
+        }
+    };
 
     const filteredFriends = friends.filter(friend => 
         friend.firstname.toLowerCase().includes(searchTerm.toLowerCase())
@@ -152,7 +151,7 @@ export default function MessagesPage() {
 
     return (
         <div className={styles.container}>
-            {/* Sidebar always rendered. On mobile it sits behind the fixed chat area */}
+            {/* Sidebar */}
             <div className={styles.sidebar}>
                 <div className={styles.header}>
                     <h2>Messages</h2>
@@ -240,13 +239,28 @@ export default function MessagesPage() {
                                             {selectedFriend.role || 'Étudiant'}
                                         </span>
                                     </div>
+
+                                    {/* Call Button SVG */}
+                                    <button 
+                                        className={styles.callBtn} 
+                                        onClick={handleStartCall}
+                                        title="Démarrer un appel vocal"
+                                        disabled={!selectedFriend.is_online}
+                                        style={{ opacity: selectedFriend.is_online ? 1 : 0.5, cursor: selectedFriend.is_online ? 'pointer' : 'not-allowed' }}
+                                    >
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.42 19.42 0 0 1-3.33-2.67m-2.67-3.34a19.79 19.79 0 0 1-3.07-8.63A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91"></path></svg>
+                                    </button>
+
                                     <button type="button" onClick={handleRemoveFriend} className={styles.removeBtn}>
                                         Retirer
                                     </button>
                                 </div>
                                 
                                 <div className={styles.messagesList}>
-                                    {displayedMessages.map((msg, index) => {
+                                    {messages.filter(m => 
+                                        (m.sender === currentUser?._id && m.receiver === selectedFriend._id) ||
+                                        (m.sender === selectedFriend._id && m.receiver === currentUser?._id)
+                                    ).map((msg, index) => {
                                         const isMe = msg.sender === currentUser._id;
                                         return (
                                             <div key={index} className={`${styles.messageRow} ${isMe ? styles.myMessageRow : styles.friendMessageRow}`}>

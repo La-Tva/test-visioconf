@@ -192,8 +192,8 @@ export default function MessagesPage() {
                                         </span>
                                     )}
                                 </div>
-                                <div className={styles.friendStatus} style={{color: friend.is_online ? '#22C55E' : '#94A3B8'}}>
-                                    {friend.is_online ? '• En ligne' : '• Hors ligne'}
+                                 <div className={styles.friendStatus} style={{color: friend.isInCall ? '#EF4444' : (friend.is_online ? '#22C55E' : '#94A3B8')}}>
+                                    {friend.isInCall ? '• En appel' : (friend.is_online ? '• En ligne' : '• Hors ligne')}
                                 </div>
                             </div>
                             {friend.unreadCount > 0 && (
@@ -244,16 +244,16 @@ export default function MessagesPage() {
                                     {/* Call Button (Updated) */}
                                     <button 
                                         onClick={handleStartCall}
-                                        title="Démarrer un appel vocal"
-                                        disabled={!selectedFriend.is_online}
+                                        title={selectedFriend.isInCall ? "L'utilisateur est déjà en ligne" : (selectedFriend.is_online ? "Démarrer un appel vocal" : "Utilisateur hors ligne")}
+                                        disabled={!selectedFriend.is_online || selectedFriend.isInCall}
                                         style={{ 
-                                            opacity: selectedFriend.is_online ? 1 : 0.5, 
-                                            cursor: selectedFriend.is_online ? 'pointer' : 'not-allowed',
+                                            opacity: (selectedFriend.is_online && !selectedFriend.isInCall) ? 1 : 0.5, 
+                                            cursor: (selectedFriend.is_online && !selectedFriend.isInCall) ? 'pointer' : 'not-allowed',
                                             display: 'flex',
                                             alignItems: 'center',
                                             gap: '8px',
                                             padding: '8px 16px',
-                                            background: '#3B82F6',
+                                            background: selectedFriend.isInCall ? '#EF4444' : '#3B82F6',
                                             color: 'white',
                                             border: 'none',
                                             borderRadius: '999px',
@@ -261,11 +261,11 @@ export default function MessagesPage() {
                                             fontSize: '0.9rem',
                                             transition: 'background 0.2s'
                                         }}
-                                        onMouseOver={(e) => selectedFriend.is_online && (e.currentTarget.style.background = '#2563EB')}
-                                        onMouseOut={(e) => selectedFriend.is_online && (e.currentTarget.style.background = '#3B82F6')}
+                                        onMouseOver={(e) => (selectedFriend.is_online && !selectedFriend.isInCall) && (e.currentTarget.style.background = '#2563EB')}
+                                        onMouseOut={(e) => (selectedFriend.is_online && !selectedFriend.isInCall) && (e.currentTarget.style.background = (selectedFriend.isInCall ? '#EF4444' : '#3B82F6'))}
                                     >
                                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.42 19.42 0 0 1-3.33-2.67m-2.67-3.34a19.79 19.79 0 0 1-3.07-8.63A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91"></path></svg>
-                                        Appeler
+                                        {selectedFriend.isInCall ? 'Occupé' : 'Appeler'}
                                     </button>
 
                                     <button type="button" onClick={handleRemoveFriend} className={styles.removeBtn}>

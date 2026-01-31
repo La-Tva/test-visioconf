@@ -37,6 +37,20 @@ function broadcastCallCount() {
     io.emit('message', JSON.stringify({ active_calls_count: count }));
 }
 
+async function broadcastUserCallStatus(socketId) {
+    const isInCall = activeCalls.has(socketId);
+    const User = require('./models/User');
+    const user = await User.findOne({ socket_id: socketId });
+    if (user) {
+        io.emit('message', JSON.stringify({ 
+            user_call_status_changed: { 
+                userId: user._id, 
+                isInCall: isInCall 
+            } 
+        }));
+    }
+}
+
 // Socket.io Logic
 io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
@@ -1068,18 +1082,27 @@ io.on('connection', (socket) => {
                     let targetSocketId = null;
 
                     // Check if 'to' is User ID or Socket ID
-                    // Mongo ID is 24 hex chars. 
                     if (typeof to === 'string' && to.match(/^[0-9a-fA-F]{24}$/)) {
                          const targetUser = await User.findById(to);
                          if (targetUser && targetUser.socket_id && targetUser.is_online) {
                              targetSocketId = targetUser.socket_id;
                          }
                     } else {
-                         // Assume Socket ID (used during renegotiation or group call candidates)
                          targetSocketId = to;
                     }
 
                     if (targetSocketId) {
+                         // Check if target is BUSY
+                         if (activeCalls.has(targetSocketId)) {
+                             console.log(`Rejecting call from ${socket.id} to ${targetSocketId} because target is BUSY.`);
+                             return socket.emit('message', JSON.stringify({
+                                 'call-rejected': { 
+                                     socket: targetSocketId,
+                                     reason: 'busy'
+                                 }
+                             }));
+                         }
+
                          console.log(`Forwarding call offer/renegotiation from ${caller ? caller.firstname : socket.id} to ${targetSocketId}`);
                          io.to(targetSocketId).emit('message', JSON.stringify({
                              'call-made': {
@@ -1110,6 +1133,8 @@ io.on('connection', (socket) => {
                     activeCalls.get(socket.id).add(to);
                     activeCalls.get(to).add(socket.id);
                     broadcastCallCount();
+                    broadcastUserCallStatus(socket.id);
+                    broadcastUserCallStatus(to);
 
                     io.to(to).emit('message', JSON.stringify({
                         'answer-made': {
@@ -1178,6 +1203,8 @@ io.on('connection', (socket) => {
                          if (activeCalls.get(to).size === 0) activeCalls.delete(to);
                      }
                      broadcastCallCount();
+                     broadcastUserCallStatus(socket.id);
+                     broadcastUserCallStatus(to);
 
                      if (typeof to === 'string' && to.match(/^[0-9a-fA-F]{24}$/)) {
                           const User = require('./models/User');
@@ -1225,6 +1252,7 @@ io.on('connection', (socket) => {
             });
             activeCalls.delete(socket.id);
             broadcastCallCount();
+            broadcastUserCallStatus(socket.id);
         }
 
         const user = await User.findOne({ socket_id: socket.id });

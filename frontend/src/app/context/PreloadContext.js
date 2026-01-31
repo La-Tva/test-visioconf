@@ -110,7 +110,6 @@ export function PreloadProvider({ children }) {
                     const msgObj = msg.receive_private_message;
                     const senderId = typeof msgObj.sender === 'object' ? msgObj.sender._id : msgObj.sender;
                     
-                    // Only increment if we are NOT currently chatting with this person
                     if (currentChatIdRef.current !== senderId) {
                         setFriends(prev => prev.map(f => {
                             if (f._id === senderId) {
@@ -121,6 +120,12 @@ export function PreloadProvider({ children }) {
                     }
                 }
 
+                if (msg.user_call_status_changed) {
+                    const { userId, isInCall } = msg.user_call_status_changed;
+                    setUsers(prev => prev.map(u => u._id === userId ? { ...u, isInCall } : u));
+                    setFriends(prev => prev.map(f => f._id === userId ? { ...f, isInCall } : f));
+                }
+
                 setLoading(false);
             }
         };
@@ -128,7 +133,7 @@ export function PreloadProvider({ children }) {
         
         controleur.inscription(preloadComp, 
             ['get friends', 'get users', 'get teams'], 
-            ['friends', 'users', 'teams', 'user_status_changed', 'user_updated', 'user_registered', 'user_deleted', 'receive_private_message', 'friend_request_accepted', 'friend_removed']
+            ['friends', 'users', 'teams', 'user_status_changed', 'user_updated', 'user_registered', 'user_deleted', 'receive_private_message', 'friend_request_accepted', 'friend_removed', 'user_call_status_changed']
         );
 
         // Fetch immediately

@@ -134,9 +134,10 @@ export default function DirectoryPage() {
                             <div 
                                 className={styles.statusDot}
                                 style={{
-                                    backgroundColor: u.disturb_status === 'dnd' ? '#EF4444' : 
-                                            (u.disturb_status === 'away' ? '#F97316' : '#22C55E'),
-                                    opacity: u.is_online ? 1 : 0.3
+                                    backgroundColor: u.isInCall ? '#EF4444' : (u.disturb_status === 'dnd' ? '#EF4444' : 
+                                            (u.disturb_status === 'away' ? '#F97316' : '#22C55E')),
+                                    opacity: u.is_online ? 1 : 0.3,
+                                    boxShadow: u.isInCall ? '0 0 0 2px #FFF, 0 0 0 4px #EF4444' : 'none'
                                 }}
                             ></div>
                         </div>

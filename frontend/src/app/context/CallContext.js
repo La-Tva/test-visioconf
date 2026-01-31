@@ -138,6 +138,10 @@ export function CallProvider({ children }) {
                          activeCallRef.current = { to: senderSocket, isCaller: false };
                      } else {
                          // Busy? Auto-reject?
+                         console.log("Auto-rejecting call because already in another state:", callStatus);
+                         controleur.envoie(callCompRef.current, {
+                             'reject-call': { to: senderSocket, reason: 'busy' }
+                         });
                      }
                  }
                  else if (msg['answer-made']) {
@@ -183,10 +187,15 @@ export function CallProvider({ children }) {
                      }
                  }
                  else if (msg['call-rejected']) {
-                     console.log("Call rejected by remote.");
+                     const { reason } = msg['call-rejected'];
+                     console.log("Call rejected by remote. Reason:", reason);
                      stopRingtone();
                      cleanupCall();
-                     alert("Appel refusé.");
+                     if (reason === 'busy') {
+                         alert("L'utilisateur est déjà en ligne.");
+                     } else {
+                         alert("Appel refusé.");
+                     }
                  }
                  else if (msg['call-ended']) {
                      console.log("Call ended by remote.");

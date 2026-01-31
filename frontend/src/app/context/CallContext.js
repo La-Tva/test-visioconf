@@ -459,10 +459,24 @@ export function CallProvider({ children }) {
                  setLocalStream(new MediaStream([...audioTracks]));
             }
         } else {
+            // Check support with fallbacks
+            const getDisplayMedia = navigator.mediaDevices?.getDisplayMedia?.bind(navigator.mediaDevices) || 
+                                    navigator.getDisplayMedia?.bind(navigator);
+
+            if (!getDisplayMedia) {
+                alert("Le partage d'écran n'est pas fourni par ce navigateur mobile (limitation constructeur). Essayez Chrome ou Safari directement.");
+                return;
+            }
+
             // START Screen Share
             try {
-                // High Quality: Request 1080p minimum if possible, or leave default (usually high for screen)
-                const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: { cursor: "always" }, audio: false });
+                // Simplified constraints for mobile (no cursor)
+                const constraints = { 
+                    video: true, 
+                    audio: false 
+                };
+                
+                const screenStream = await getDisplayMedia(constraints);
                 const screenTrack = screenStream.getVideoTracks()[0];
 
                 if (!screenTrack) return;

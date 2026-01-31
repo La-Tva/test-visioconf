@@ -14,6 +14,7 @@ export default function AdminDashboard() {
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [editingUser, setEditingUser] = useState(null);
     const [editRole, setEditRole] = useState('etudiant');
+    const [searchTerm, setSearchTerm] = useState('');
 
     const { controleur, isReady } = useSocket();
     const adminCompRef = useRef(null);
@@ -76,6 +77,11 @@ export default function AdminDashboard() {
 
     const connectedUsers = users.filter(u => u.is_online).length;
     const totalUsers = users.length;
+    
+    const filteredUsers = users.filter(u => 
+        u.firstname?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        u.email?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
     
     const handleLogout = () => {
         localStorage.removeItem('user');
@@ -153,7 +159,13 @@ export default function AdminDashboard() {
                     <div className={styles.controlsRow}>
                         <div className={styles.searchWrapper}>
                             <svg className={styles.searchIcon} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                            <input type="text" placeholder="Chercher un membre..." className={styles.searchInput} />
+                            <input 
+                                type="text" 
+                                placeholder="Chercher un membre (nom, email)..." 
+                                className={styles.searchInput} 
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
                         </div>
                     </div>
 
@@ -165,7 +177,7 @@ export default function AdminDashboard() {
                             <div className={styles.actions} style={{width: 100}}></div>
                         </div>
 
-                        {users.map(u => (
+                        {filteredUsers.map(u => (
                             <div key={u._id} className={styles.userCard}>
                                 <div className={styles.userInfo}>
                                     <div style={{position:'relative'}}>

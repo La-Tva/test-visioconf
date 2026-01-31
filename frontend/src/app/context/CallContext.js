@@ -323,14 +323,23 @@ export function CallProvider({ children }) {
     // --- Audio Policy Unlocker ---
     useEffect(() => {
         const unlockAudio = () => {
-            // Create a dummy audio context interaction or play/pause to unlock autoplay
-            const audio = new Audio('/assets/sonnerie.mp3');
-            audio.volume = 0;
-            audio.play().then(() => {
-                audio.pause();
-                console.log("Audio autoplay unlocked");
-            }).catch(() => {});
+            // Updated: Use silent oscillator instead of loading mp3 to avoid accidental noise
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            const ctx = new AudioContext();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
             
+            gain.gain.value = 0; // Absolute silence
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            
+            osc.start(0);
+            setTimeout(() => {
+                osc.stop();
+                ctx.close();
+                console.log("Audio Context unlocked silently");
+            }, 100);
+
             document.removeEventListener('click', unlockAudio);
             document.removeEventListener('keydown', unlockAudio);
         };

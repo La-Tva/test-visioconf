@@ -51,6 +51,15 @@ async function broadcastUserCallStatus(socketId) {
     }
 }
 
+async function broadcastUserOnlineStatus(userId, is_online) {
+    io.emit('message', JSON.stringify({
+        user_status_changed: {
+            userId: userId,
+            is_online: is_online
+        }
+    }));
+}
+
 // Socket.io Logic
 io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
@@ -71,6 +80,8 @@ io.on('connection', (socket) => {
                      user.is_online = true;
                      user.last_connection = Date.now();
                      await user.save();
+                     
+                     broadcastUserOnlineStatus(user._id, true);
  
                      socket.emit('message', JSON.stringify({
                          login_status: {
@@ -112,11 +123,16 @@ io.on('connection', (socket) => {
                         });
                         await newUser.save();
 
-                        socket.emit('message', JSON.stringify({
+                         socket.emit('message', JSON.stringify({
                             registration_status: {
                                 success: true,
                                 user: newUser
                             }
+                        }));
+                        
+                        // BROADCAST NEW USER
+                        io.emit('message', JSON.stringify({
+                            user_registered: newUser
                         }));
                     }
                 } catch (err) {
@@ -150,11 +166,16 @@ io.on('connection', (socket) => {
                     );
 
                     if (updatedUser) {
-                        socket.emit('message', JSON.stringify({
+                         socket.emit('message', JSON.stringify({
                             'user_updating status': {
                                 success: true,
                                 user: updatedUser
                             }
+                        }));
+                        
+                        // BROADCAST UPDATE
+                        io.emit('message', JSON.stringify({
+                            user_updated: updatedUser
                         }));
                     } else {
                         socket.emit('message', JSON.stringify({
@@ -187,6 +208,8 @@ io.on('connection', (socket) => {
                         // user.disturb_status = user.disturb_status || 'available'; 
                         await user.save();
                         console.log(`User ${_id} identified and set online. Socket: ${socket.id}`);
+
+                        broadcastUserOnlineStatus(_id, true);
                         
                         socket.emit('message', JSON.stringify({
                             'auth status': {
@@ -216,6 +239,11 @@ io.on('connection', (socket) => {
                                 success: true,
                                 userId: _id
                             }
+                        }));
+
+                        // BROADCAST DELETION
+                        io.emit('message', JSON.stringify({
+                            user_deleted: { userId: _id }
                         }));
                     } else {
                         socket.emit('message', JSON.stringify({
@@ -1260,13 +1288,14 @@ io.on('connection', (socket) => {
             user.is_online = false;
             user.last_seen = Date.now();
             await user.save();
+            broadcastUserOnlineStatus(user._id, false);
         }
     });
     // Handshake for CanalSocketio
         socket.on('demande_liste', () => {
         console.log('Received demande_liste');
         const listes = {
-            emission: ['login_status', 'registration_status', 'users', 'user_updating status', 'user_deleting_status', 'receive_friend_request', 'friend_request_accepted', 'messages', 'friends', 'auth status', 'friend_removed', 'last_messages', 'user_status_changed', 'user_registered', 'user_updated', 'user_deleted', 'team_creating_status', 'teams', 'receive_team_message', 'team_messages', 'leave_team_status', 'team_deleting_status', 'team_updating_status', 'files', 'file_uploading_status', 'file_updating_status', 'file_deleting_status', 'spaces', 'space_creating_status', 'space_deleting_status', 'call-made', 'answer-made', 'ice-candidate', 'call-rejected', 'call-ended', 'active_calls_count'],
+            emission: ['login_status', 'registration_status', 'users', 'user_updating status', 'user_deleting_status', 'receive_friend_request', 'friend_request_accepted', 'messages', 'friends', 'auth status', 'friend_removed', 'last_messages', 'user_status_changed', 'user_registered', 'user_updated', 'user_deleted', 'team_creating_status', 'teams', 'receive_team_message', 'team_messages', 'leave_team_status', 'team_deleting_status', 'team_updating_status', 'files', 'file_uploading_status', 'file_updating_status', 'file_deleting_status', 'spaces', 'space_creating_status', 'space_deleting_status', 'call-made', 'answer-made', 'ice-candidate', 'call-rejected', 'call-ended', 'active_calls_count', 'user_call_status_changed'],
             abonnement: ['login', 'register', 'get users', 'update user', 'delete_user', 'friend_request', 'friend_response', 'send message', 'get messages', 'get friends', 'authenticate', 'remove_friend', 'get_last_messages', 'create team', 'get teams', 'team_message', 'get_team_messages', 'leave_team', 'delete team', 'add_team_member', 'remove_team_member', 'get_files', 'get file', 'upload_file', 'update file', 'delete_file', 'create_space', 'get_spaces', 'delete_space', 'call-user', 'make-answer', 'ice-candidate', 'reject-call', 'hang-up', 'call-team', 'get_active_calls']
         };
         socket.emit('donne_liste', JSON.stringify(listes));

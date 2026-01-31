@@ -55,13 +55,31 @@ export default function AdminDashboard() {
                 if (msg.active_calls_count !== undefined) {
                     setActiveCallsCount(msg.active_calls_count);
                 }
+                if (msg.user_status_changed) {
+                    const { userId, is_online } = msg.user_status_changed;
+                    setUsers(prev => prev.map(u => u._id === userId ? { ...u, is_online } : u));
+                }
+                if (msg.user_call_status_changed) {
+                    const { userId, isInCall } = msg.user_call_status_changed;
+                    setUsers(prev => prev.map(u => u._id === userId ? { ...u, isInCall } : u));
+                }
+                if (msg.user_registered) {
+                    setUsers(prev => [...prev, msg.user_registered]);
+                }
+                if (msg.user_deleted) {
+                    setUsers(prev => prev.filter(u => u._id !== msg.user_deleted.userId));
+                }
+                if (msg.user_updated) {
+                    const updatedUser = msg.user_updated;
+                    setUsers(prev => prev.map(u => u._id === updatedUser._id ? updatedUser : u));
+                }
             }
         };
         adminCompRef.current = adminComp;
         
         controleur.inscription(adminComp, 
             ['get users', 'update user', 'delete_user', 'get_active_calls'], 
-            ['users', 'user_updating status', 'user_deleting_status', 'active_calls_count']
+            ['users', 'user_updating status', 'user_deleting_status', 'active_calls_count', 'user_status_changed', 'user_call_status_changed', 'user_registered', 'user_deleted', 'user_updated']
         );
 
         controleur.envoie(adminComp, { 'get users': {} });
@@ -185,7 +203,8 @@ export default function AdminDashboard() {
                                         <div style={{
                                             position: 'absolute', bottom: 2, right: 2, width: 12, height: 12,
                                             borderRadius: '50%', border: '2.5px solid #FFFFFF',
-                                            backgroundColor: u.is_online ? '#22C55E' : '#94A3B8'
+                                            backgroundColor: u.isInCall ? '#EF4444' : (u.is_online ? '#22C55E' : '#94A3B8'),
+                                            boxShadow: u.isInCall ? '0 0 0 1px #EF4444' : 'none'
                                         }}></div>
                                     </div>
                                     <div className={styles.userTexts}>

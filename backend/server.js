@@ -23,6 +23,19 @@ const io = new Server(server, {
 mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/visioconf')
     .then(() => console.log('MongoDB Connected'))
     .catch(err => console.error('MongoDB Connection Error:', err));
+    
+// Call Tracking
+const activeCalls = new Map(); // socketId -> Set of targetSocketIds
+function getActiveCallsCount() {
+    let totalPairs = 0;
+    activeCalls.forEach(targets => totalPairs += targets.size);
+    return Math.floor(totalPairs / 2);
+}
+
+function broadcastCallCount() {
+    const count = getActiveCallsCount();
+    io.emit('message', JSON.stringify({ active_calls_count: count }));
+}
 
 // Socket.io Logic
 io.on('connection', (socket) => {
@@ -1090,6 +1103,14 @@ io.on('connection', (socket) => {
                     const answerer = await User.findOne({ socket_id: socket.id });
 
                     console.log(`Forwarding call answer to ${to}`);
+                    
+                    // Track Active Call
+                    if (!activeCalls.has(socket.id)) activeCalls.set(socket.id, new Set());
+                    if (!activeCalls.has(to)) activeCalls.set(to, new Set());
+                    activeCalls.get(socket.id).add(to);
+                    activeCalls.get(to).add(socket.id);
+                    broadcastCallCount();
+
                     io.to(to).emit('message', JSON.stringify({
                         'answer-made': {
                             socket: socket.id,
@@ -1147,6 +1168,17 @@ io.on('connection', (socket) => {
                 const { to } = message['hang-up'];
                 if (!to) return;
                 try {
+                     // Cleanup Active Call
+                     if (activeCalls.has(socket.id)) {
+                         activeCalls.get(socket.id).delete(to);
+                         if (activeCalls.get(socket.id).size === 0) activeCalls.delete(socket.id);
+                     }
+                     if (activeCalls.has(to)) {
+                         activeCalls.get(to).delete(socket.id);
+                         if (activeCalls.get(to).size === 0) activeCalls.delete(to);
+                     }
+                     broadcastCallCount();
+
                      if (typeof to === 'string' && to.match(/^[0-9a-fA-F]{24}$/)) {
                           const User = require('./models/User');
                           const targetUser = await User.findById(to);
@@ -1158,13 +1190,16 @@ io.on('connection', (socket) => {
                      } else {
                           io.to(to).emit('message', JSON.stringify({
                               'call-ended': { socket: socket.id }
-                          }));
+                           }));
                      }
                 } catch (e) {
                     console.error('Hang up error:', e);
                 }
             }
 
+            else if (message.get_active_calls) {
+                socket.emit('message', JSON.stringify({ active_calls_count: getActiveCallsCount() }));
+            }
             else {
                  // Determine where to route other messages
                  // For now, echo or specific logic could go here
@@ -1178,6 +1213,20 @@ io.on('connection', (socket) => {
 
     socket.on('disconnect', async () => {
         console.log('User disconnected:', socket.id);
+        
+        // Cleanup Active Calls
+        if (activeCalls.has(socket.id)) {
+            const targets = activeCalls.get(socket.id);
+            targets.forEach(targetId => {
+                if (activeCalls.has(targetId)) {
+                    activeCalls.get(targetId).delete(socket.id);
+                    if (activeCalls.get(targetId).size === 0) activeCalls.delete(targetId);
+                }
+            });
+            activeCalls.delete(socket.id);
+            broadcastCallCount();
+        }
+
         const user = await User.findOne({ socket_id: socket.id });
         if (user) {
             user.is_online = false;
@@ -1189,8 +1238,8 @@ io.on('connection', (socket) => {
         socket.on('demande_liste', () => {
         console.log('Received demande_liste');
         const listes = {
-            emission: ['login_status', 'registration_status', 'users', 'user_updating status', 'user_deleting_status', 'receive_friend_request', 'friend_request_accepted', 'messages', 'friends', 'auth status', 'friend_removed', 'last_messages', 'user_status_changed', 'user_registered', 'user_updated', 'user_deleted', 'team_creating_status', 'teams', 'receive_team_message', 'team_messages', 'leave_team_status', 'team_deleting_status', 'team_updating_status', 'files', 'file_uploading_status', 'file_updating_status', 'file_deleting_status', 'spaces', 'space_creating_status', 'space_deleting_status', 'call-made', 'answer-made', 'ice-candidate', 'call-rejected', 'call-ended'],
-            abonnement: ['login', 'register', 'get users', 'update user', 'delete_user', 'friend_request', 'friend_response', 'send message', 'get messages', 'get friends', 'authenticate', 'remove_friend', 'get_last_messages', 'create team', 'get teams', 'team_message', 'get_team_messages', 'leave_team', 'delete team', 'add_team_member', 'remove_team_member', 'get_files', 'get file', 'upload_file', 'update file', 'delete_file', 'create_space', 'get_spaces', 'delete_space', 'call-user', 'make-answer', 'ice-candidate', 'reject-call', 'hang-up', 'call-team']
+            emission: ['login_status', 'registration_status', 'users', 'user_updating status', 'user_deleting_status', 'receive_friend_request', 'friend_request_accepted', 'messages', 'friends', 'auth status', 'friend_removed', 'last_messages', 'user_status_changed', 'user_registered', 'user_updated', 'user_deleted', 'team_creating_status', 'teams', 'receive_team_message', 'team_messages', 'leave_team_status', 'team_deleting_status', 'team_updating_status', 'files', 'file_uploading_status', 'file_updating_status', 'file_deleting_status', 'spaces', 'space_creating_status', 'space_deleting_status', 'call-made', 'answer-made', 'ice-candidate', 'call-rejected', 'call-ended', 'active_calls_count'],
+            abonnement: ['login', 'register', 'get users', 'update user', 'delete_user', 'friend_request', 'friend_response', 'send message', 'get messages', 'get friends', 'authenticate', 'remove_friend', 'get_last_messages', 'create team', 'get teams', 'team_message', 'get_team_messages', 'leave_team', 'delete team', 'add_team_member', 'remove_team_member', 'get_files', 'get file', 'upload_file', 'update file', 'delete_file', 'create_space', 'get_spaces', 'delete_space', 'call-user', 'make-answer', 'ice-candidate', 'reject-call', 'hang-up', 'call-team', 'get_active_calls']
         };
         socket.emit('donne_liste', JSON.stringify(listes));
     });

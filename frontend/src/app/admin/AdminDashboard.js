@@ -8,6 +8,7 @@ export default function AdminDashboard() {
     const router = useRouter();
     const [currentUser, setCurrentUser] = useState(null);
     const [users, setUsers] = useState([]);
+    const [activeCallsCount, setActiveCallsCount] = useState(0);
     
     // Modal State
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -50,21 +51,25 @@ export default function AdminDashboard() {
                         alert("Erreur: " + msg.user_deleting_status.error);
                     }
                 }
+                if (msg.active_calls_count !== undefined) {
+                    setActiveCallsCount(msg.active_calls_count);
+                }
             }
         };
         adminCompRef.current = adminComp;
         
         controleur.inscription(adminComp, 
             ['get users', 'update user', 'delete_user'], 
-            ['users', 'user_updating status', 'user_deleting_status']
+            ['users', 'user_updating status', 'user_deleting_status', 'active_calls_count']
         );
 
         controleur.envoie(adminComp, { 'get users': {} });
+        controleur.envoie(adminComp, { 'get_active_calls': {} });
 
         return () => {
              controleur.desincription(adminComp, 
                 ['get users', 'update user', 'delete_user'], 
-                ['users', 'user_updating status', 'user_deleting_status']
+                ['users', 'user_updating status', 'user_deleting_status', 'active_calls_count']
             );
         };
     }, [controleur, isReady]);
@@ -136,7 +141,7 @@ export default function AdminDashboard() {
                         <div className={styles.statCard}>
                             <div className={styles.statIconContainer} style={{background:'#F3E8FF'}}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7E22CE" strokeWidth="2.5"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg></div>
                             <div className={styles.statLabel}>Appels</div>
-                            <div className={styles.statValue}>0 actif(s)</div>
+                            <div className={styles.statValue}>{activeCallsCount} actif(s)</div>
                         </div>
                         <div className={styles.statCard}>
                             <div className={styles.statIconContainer} style={{background:'#DCFCE7'}}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#166534" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg></div>

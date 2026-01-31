@@ -12,10 +12,20 @@ export default function CallOverlay() {
 
     // Mobile Check
     const [isMobile, setIsMobile] = useState(false);
+    const [hasScreenShareSupport, setHasScreenShareSupport] = useState(false);
+
     useEffect(() => {
         const checkMobile = () => setIsMobile(window.innerWidth <= 768);
         checkMobile();
         window.addEventListener('resize', checkMobile);
+        
+        // Detect Screen Share support
+        setHasScreenShareSupport(
+            typeof navigator !== 'undefined' && 
+            navigator.mediaDevices && 
+            !!navigator.mediaDevices.getDisplayMedia
+        );
+
         return () => window.removeEventListener('resize', checkMobile);
     }, []);
 
@@ -119,14 +129,14 @@ export default function CallOverlay() {
     // --- Panel Design Styles ---
     const panelContainerStyle = isMinimized ? {
         position: 'fixed',
-        top: '84px', left: '0', right: '0',
+        top: '74px', left: '0', right: '0',
         width: 'auto', height: 'auto',
         zIndex: 9999,
         pointerEvents: 'none',
         display: 'flex', justifyContent: 'center',
     } : {
         position: 'fixed',
-        top: isMobile ? '60px' : '84px', 
+        top: isMobile ? '50px' : '74px', 
         left: isMobile ? '0' : '0', 
         right: isMobile ? '0' : '0', 
         bottom: isMobile ? '0' : undefined,
@@ -152,7 +162,7 @@ export default function CallOverlay() {
         background: isMobile ? '#000' : '#FFFFFF', 
         width: isMobile ? '100vw' : '100%', 
         maxWidth: isMobile ? '100vw' : '900px', 
-        height: isMobile ? 'calc(100vh - 60px)' : 'auto',
+        height: isMobile ? 'calc(100vh - 50px)' : 'auto',
         borderRadius: isMobile ? '24px 24px 0 0' : '24px', 
         overflow: 'hidden',
         boxShadow: isMobile ? 'none' : '0 25px 50px -12px rgba(0, 0, 0, 0.15)', 
@@ -178,9 +188,11 @@ export default function CallOverlay() {
             ) : (
                 <>
                     {/* Screen Share */}
-                    <button onClick={toggleScreenShare} title="Partager l'écran" style={{ background: isScreenSharing ? '#EFF6FF' : '#FEF2F2', border: 'none', borderRadius: '8px', width:'40px', height:'40px', display:'flex', alignItems:'center', justifyContent:'center', color: isScreenSharing ? '#3B82F6' : '#64748B', cursor: 'pointer', transition: 'all 0.2s', marginRight: '8px' }}>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M13 3H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-3"></path><polyline points="8 21 12 17 16 21"></polyline><line x1="12" y1="17" x2="12" y2="13"></line><line x1="2" y1="13" x2="22" y2="13"></line></svg>
-                    </button>
+                    {hasScreenShareSupport && (
+                        <button onClick={toggleScreenShare} title="Partager l'écran" style={{ background: isScreenSharing ? '#EFF6FF' : '#FEF2F2', border: 'none', borderRadius: '8px', width:'40px', height:'40px', display:'flex', alignItems:'center', justifyContent:'center', color: isScreenSharing ? '#3B82F6' : '#64748B', cursor: 'pointer', transition: 'all 0.2s', marginRight: '8px' }}>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M13 3H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-3"></path><polyline points="8 21 12 17 16 21"></polyline><line x1="12" y1="17" x2="12" y2="13"></line><line x1="2" y1="13" x2="22" y2="13"></line></svg>
+                        </button>
+                    )}
 
                     {/* Toggle Video */}
                     <button onClick={toggleVideo} title="Caméra" style={{ background: hasLocalVideo ? '#EFF6FF' : '#FEF2F2', border: 'none', borderRadius: '8px', width:'40px', height:'40px', display:'flex', alignItems:'center', justifyContent:'center', color: hasLocalVideo ? '#3B82F6' : '#EF4444', cursor: 'pointer', transition: 'all 0.2s' }}>
@@ -338,7 +350,7 @@ export default function CallOverlay() {
                                 {/* Local Video (Small PIP Top Right) */}
                                 {hasLocalVideo && hasRemoteVideo && (
                                      <div style={{ position: 'absolute', top: '80px', right: '16px', width: '80px', height: '120px', borderRadius: '12px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.3)', boxShadow: '0 4px 12px rgba(0,0,0,0.3)', zIndex: 10 }}>
-                                        <video ref={localVideoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                        <video ref={localVideoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: isScreenSharing ? 'contain' : 'cover' }} />
                                      </div>
                                 )}
 
@@ -433,7 +445,7 @@ export default function CallOverlay() {
                                     boxShadow: 'inset 0 2px 4px 0 rgba(0, 0, 0, 0.05)'
                                 }}>
                                     {hasLocalVideo ? (
-                                        <video ref={localVideoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }} />
+                                        <video ref={localVideoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: isScreenSharing ? 'contain' : 'cover', transform: isScreenSharing ? 'none' : 'scaleX(-1)' }} />
                                     ) : (
                                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
                                             <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: '#E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

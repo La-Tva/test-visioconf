@@ -1120,9 +1120,9 @@ io.on('connection', (socket) => {
                     }
 
                     if (targetSocketId) {
-                         // Check if target is BUSY
-                         if (activeCalls.has(targetSocketId)) {
-                             console.log(`Rejecting call from ${socket.id} to ${targetSocketId} because target is BUSY.`);
+                         // Check if target is BUSY (busy with someone else)
+                         if (activeCalls.has(targetSocketId) && !activeCalls.get(targetSocketId).has(socket.id)) {
+                             console.log(`Rejecting call from ${socket.id} to ${targetSocketId} because target is BUSY with another user.`);
                              return socket.emit('message', JSON.stringify({
                                  'call-rejected': { 
                                      socket: targetSocketId,

@@ -459,12 +459,6 @@ export function CallProvider({ children }) {
                  setLocalStream(new MediaStream([...audioTracks]));
             }
         } else {
-            // Check support
-            if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
-                alert("Le partage d'écran n'est pas supporté sur cet appareil ou ce navigateur (ex: iOS Safari limité).");
-                return;
-            }
-
             // START Screen Share
             try {
                 // High Quality: Request 1080p minimum if possible, or leave default (usually high for screen)

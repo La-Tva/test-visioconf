@@ -12,20 +12,11 @@ export default function CallOverlay() {
 
     // Mobile Check
     const [isMobile, setIsMobile] = useState(false);
-    const [hasScreenShareSupport, setHasScreenShareSupport] = useState(false);
 
     useEffect(() => {
         const checkMobile = () => setIsMobile(window.innerWidth <= 768);
         checkMobile();
         window.addEventListener('resize', checkMobile);
-        
-        // Detect Screen Share support
-        setHasScreenShareSupport(
-            typeof navigator !== 'undefined' && 
-            navigator.mediaDevices && 
-            !!navigator.mediaDevices.getDisplayMedia
-        );
-
         return () => window.removeEventListener('resize', checkMobile);
     }, []);
 

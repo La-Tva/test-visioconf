@@ -188,11 +188,9 @@ export default function CallOverlay() {
             ) : (
                 <>
                     {/* Screen Share */}
-                    {hasScreenShareSupport && (
-                        <button onClick={toggleScreenShare} title="Partager l'écran" style={{ background: isScreenSharing ? '#EFF6FF' : '#FEF2F2', border: 'none', borderRadius: '8px', width:'40px', height:'40px', display:'flex', alignItems:'center', justifyContent:'center', color: isScreenSharing ? '#3B82F6' : '#64748B', cursor: 'pointer', transition: 'all 0.2s', marginRight: '8px' }}>
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M13 3H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-3"></path><polyline points="8 21 12 17 16 21"></polyline><line x1="12" y1="17" x2="12" y2="13"></line><line x1="2" y1="13" x2="22" y2="13"></line></svg>
-                        </button>
-                    )}
+                    <button onClick={toggleScreenShare} title="Partager l'écran" style={{ background: isScreenSharing ? '#EFF6FF' : '#FEF2F2', border: 'none', borderRadius: '8px', width:'40px', height:'40px', display:'flex', alignItems:'center', justifyContent:'center', color: isScreenSharing ? '#3B82F6' : '#64748B', cursor: 'pointer', transition: 'all 0.2s', marginRight: '8px' }}>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M13 3H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-3"></path><polyline points="8 21 12 17 16 21"></polyline><line x1="12" y1="17" x2="12" y2="13"></line><line x1="2" y1="13" x2="22" y2="13"></line></svg>
+                    </button>
 
                     {/* Toggle Video */}
                     <button onClick={toggleVideo} title="Caméra" style={{ background: hasLocalVideo ? '#EFF6FF' : '#FEF2F2', border: 'none', borderRadius: '8px', width:'40px', height:'40px', display:'flex', alignItems:'center', justifyContent:'center', color: hasLocalVideo ? '#3B82F6' : '#EF4444', cursor: 'pointer', transition: 'all 0.2s' }}>

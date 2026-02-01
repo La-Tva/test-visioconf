@@ -202,11 +202,11 @@ export default function TeamCallOverlay() {
         pointerEvents: 'none',
     } : {
         position: 'fixed',
-        top: '69px', left: '0', right: '0', bottom: '0',
+        top: '0', left: '0', right: '0', bottom: '0', // Full screen overlay
         zIndex: 9999,
-        display: 'flex', justifyContent: 'center', alignItems: 'flex-start',
+        display: 'flex', justifyContent: 'center', alignItems: 'center',
         pointerEvents: 'none',
-        padding: '0 24px',
+        padding: '0',
     };
 
     const panelStyle = isMinimized ? {
@@ -221,11 +221,12 @@ export default function TeamCallOverlay() {
         border: '1px solid #E2E8F0',
     } : {
         background: '#FFFFFF',
-        width: '100%',
-        maxWidth: '1200px',
-        borderRadius: '24px',
+        width: '98vw', // Almost full width
+        height: '92vh', // Almost full height
+        maxWidth: 'none', // Remove limit
+        borderRadius: '16px',
         overflow: 'hidden',
-        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.15)',
+        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
         pointerEvents: 'auto',
         display: 'flex',
         flexDirection: 'column',

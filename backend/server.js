@@ -1333,25 +1333,28 @@ io.on('connection', (socket) => {
                         
                         // Notify others
                         if (team) {
-                            const recipients = [...team.members, team.owner];
                             recipients.forEach(r => {
                                 if (r.socket_id && r.is_online) {
                                     // Send participant-left FIRST (so peers close old connection)
                                     io.to(r.socket_id).emit('message', JSON.stringify({
                                         'participant-left': { socket: socket.id, teamId: teamId }
                                     }));
-                                    // Send notification with firstname (for UI toast)
+                                    // Send notification with firstname
                                     io.to(r.socket_id).emit('message', JSON.stringify({
                                         'participant-left-notification': { 
                                             teamId: teamId, 
                                             firstname: userToRemove.user?.firstname || 'Un participant' 
                                         }
                                     }));
+                                    
+                                    // Determine if call is still active
+                                    const isActive = participants.size > 0;
+                                    
                                     // Then send updated status
                                     io.to(r.socket_id).emit('message', JSON.stringify({
                                         'team-call-status': {
                                             teamId: team._id,
-                                            active: participants.size > 0,
+                                            active: isActive,
                                             participants: Array.from(participants),
                                             ownerId: team.owner._id
                                         }

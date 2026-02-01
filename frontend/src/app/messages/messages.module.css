@@ -216,6 +216,12 @@
     font-size: 14px;
     line-height: 1.5;
     font-weight: 500;
+    word-break: break-word;
+    /* Ensure long words break */
+    overflow-wrap: break-word;
+    /* Standard property */
+    white-space: pre-wrap;
+    /* Preserve newlines and wrap text */
 }
 
 .myMessageRow .messageBubble {

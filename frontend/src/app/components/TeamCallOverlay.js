@@ -392,7 +392,18 @@ export default function TeamCallOverlay() {
                                 {/* Local Video (You) */}
                                 <div style={tileStyle}>
                                     {hasLocalVideo ? (
-                                        <video ref={localVideoRef} autoPlay muted playsInline style={videoStyle} />
+                                        <video 
+                                            ref={el => {
+                                                if (el && localStream && el.srcObject !== localStream) {
+                                                    el.srcObject = localStream;
+                                                }
+                                                localVideoRef.current = el;
+                                            }} 
+                                            autoPlay 
+                                            muted 
+                                            playsInline 
+                                            style={videoStyle} 
+                                        />
                                     ) : (
                                         <div style={avatarPlaceholderStyle}>V</div>
                                     )}
@@ -406,7 +417,15 @@ export default function TeamCallOverlay() {
                                 {Object.entries(remoteStreams).map(([socketId, stream]) => (
                                     <div key={socketId} style={tileStyle}>
                                         <video
-                                            ref={el => { if (el) remoteVideoRefs.current[socketId] = el; }}
+                                            ref={el => {
+                                                if (el) {
+                                                    remoteVideoRefs.current[socketId] = el;
+                                                    // Attach stream immediately when element is created
+                                                    if (el.srcObject !== stream) {
+                                                        el.srcObject = stream;
+                                                    }
+                                                }
+                                            }}
                                             autoPlay
                                             playsInline
                                             style={videoStyle}

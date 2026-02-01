@@ -211,14 +211,14 @@ export default function TeamCallOverlay() {
 
     const panelStyle = isMinimized ? {
         background: '#FFFFFF',
-        borderRadius: '12px',
-        padding: '8px 16px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '12px',
-        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+        borderRadius: '16px',
+        overflow: 'hidden', // Contain video
+        boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
         pointerEvents: 'auto',
         border: '1px solid #E2E8F0',
+        display: 'flex',
+        flexDirection: 'column',
+        width: '360px', // Larger width ("entre deux")
     } : {
         background: '#FFFFFF',
         width: '98vw', // Almost full width
@@ -402,37 +402,63 @@ export default function TeamCallOverlay() {
 
                 <motion.div layout style={panelStyle}>
                     {isMinimized ? (
-                        // --- Minimized View ---
+                        // --- Minimized View ("Entre deux") ---
                         <>
-                            {/* Thumbnail */}
-                            <div style={{ width: '40px', height: '40px', borderRadius: '8px', overflow: 'hidden', background: '#1E293B' }}>
-                                {hasLocalVideo ? (
-                                    <video ref={localVideoRef} autoPlay muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            {/* Video Area (Main Participant/Host) */}
+                            <div style={{ width: '100%', height: '200px', background: '#000', position: 'relative' }}>
+                                {isHeroLocal ? (
+                                    <video 
+                                        ref={localVideoRef} 
+                                        autoPlay 
+                                        muted 
+                                        playsInline 
+                                        style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                                    />
                                 ) : (
-                                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94A3B8', fontSize: '0.8rem' }}>👤</div>
+                                    <video 
+                                        ref={el => {
+                                            if (el) {
+                                                remoteVideoRefs.current[heroSocketId] = el;
+                                                // Re-attach stream if needed (Effect handles this, but safe to check)
+                                                if (remoteStreams[heroSocketId] && el.srcObject !== remoteStreams[heroSocketId]) {
+                                                    el.srcObject = remoteStreams[heroSocketId];
+                                                }
+                                            }
+                                        }}
+                                        autoPlay 
+                                        playsInline 
+                                        style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                                    />
                                 )}
+                                
+                                {/* Name Tag */}
+                                <div style={{ 
+                                    position: 'absolute', bottom: '8px', left: '8px', 
+                                    background: 'rgba(0,0,0,0.6)', color: 'white', 
+                                    padding: '2px 8px', borderRadius: '4px', fontSize: '0.75rem' 
+                                }}>
+                                    {isHeroLocal ? 'Vous' : (activeCall?.participants?.find(p => p.socketId === heroSocketId)?.firstname || 'Participant')}
+                                </div>
                             </div>
                             
-                            {/* Info */}
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                                <span style={{ color: '#0F172A', fontSize: '0.85rem', fontWeight: 600 }}>Appel d'équipe</span>
-                                <span style={{ color: '#64748B', fontSize: '0.75rem' }}>{participantCount} participant{participantCount > 1 ? 's' : ''}</span>
-                            </div>
+                            {/* Controls & Status Bar */}
+                            <div style={{ padding: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'white' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                    <span style={{ fontWeight: 600, fontSize: '0.9rem', color: '#1E293B' }}>Appel en cours</span>
+                                    <span style={{ fontSize: '0.75rem', color: '#64748B' }}>{participantCount} participants</span>
+                                </div>
 
-                            {/* Controls */}
-                            <div style={{ display: 'flex', gap: '8px', marginLeft: 'auto' }}>
-                                <button onClick={toggleAudio} style={{ ...buttonStyle(isAudioEnabled), width: '36px', height: '36px' }}>
-                                    {isAudioEnabled ? <IconMic /> : <IconMicOff />}
-                                </button>
-                                <button onClick={toggleVideo} style={{ ...buttonStyle(isVideoEnabled), width: '36px', height: '36px' }}>
-                                    {isVideoEnabled ? <IconCam /> : <IconCamOff />}
-                                </button>
-                                <button onClick={leaveTeamCall} style={{ ...hangupButtonStyle, width: '36px', height: '36px' }}>
-                                    <IconHangup />
-                                </button>
-                                <button onClick={() => setIsMinimized(false)} style={{ background: 'transparent', border: 'none', color: '#94A3B8', cursor: 'pointer' }}>
-                                    <IconMaximize />
-                                </button>
+                                <div style={{ display: 'flex', gap: '8px' }}>
+                                    <button onClick={toggleAudio} style={{ ...buttonStyle(isAudioEnabled), width: '32px', height: '32px' }}>
+                                        {isAudioEnabled ? <IconMic /> : <IconMicOff />}
+                                    </button>
+                                    <button onClick={leaveTeamCall} style={{ ...hangupButtonStyle, width: '32px', height: '32px', marginLeft: 0 }}>
+                                        <IconHangup />
+                                    </button>
+                                    <button onClick={() => setIsMinimized(false)} style={{ background: '#F1F5F9', border: 'none', borderRadius: '8px', width: '32px', height: '32px', color: '#475569', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        <IconMaximize />
+                                    </button>
+                                </div>
                             </div>
                         </>
                     ) : (

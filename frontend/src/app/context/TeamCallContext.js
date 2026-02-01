@@ -454,12 +454,42 @@ export function TeamCallProvider({ children }) {
         }
     };
 
-    const toggleVideo = () => {
-         if (localStream) {
-            const track = localStream.getVideoTracks()[0];
-            if (track) {
-                track.enabled = !track.enabled;
-                setIsVideoEnabled(track.enabled);
+    const toggleVideo = async () => {
+        if (!localStream) return;
+        
+        const existingVideoTrack = localStream.getVideoTracks()[0];
+        
+        if (existingVideoTrack) {
+            // If we have a video track, toggle it
+            existingVideoTrack.enabled = !existingVideoTrack.enabled;
+            setIsVideoEnabled(existingVideoTrack.enabled);
+        } else {
+            // No video track exists - need to add one (member joined audio-only)
+            try {
+                const videoStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+                const videoTrack = videoStream.getVideoTracks()[0];
+                
+                // Add to local stream
+                localStream.addTrack(videoTrack);
+                localStreamRef.current = localStream;
+                setIsVideoEnabled(true);
+                
+                // Add video track to all existing peer connections
+                Object.values(peerConnections.current).forEach(pc => {
+                    if (pc.signalingState !== 'closed') {
+                        const sender = pc.getSenders().find(s => s.track?.kind === 'video');
+                        if (sender) {
+                            sender.replaceTrack(videoTrack);
+                        } else {
+                            pc.addTrack(videoTrack, localStream);
+                        }
+                    }
+                });
+                
+                console.log("[TOGGLE VIDEO] Added new video track for audio-only participant");
+            } catch (e) {
+                console.error("Error adding video track:", e);
+                alert("Impossible d'accéder à la caméra.");
             }
         }
     };

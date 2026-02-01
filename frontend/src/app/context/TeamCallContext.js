@@ -64,10 +64,10 @@ export function TeamCallProvider({ children }) {
             traitementMessage: (msg) => {
                 // 1. Status Updates (Who is in the call)
                 if (msg['team-call-status']) {
-                    const { teamId, active, participants } = msg['team-call-status'];
+                    const { teamId, active, participants, ownerId } = msg['team-call-status'];
                     setActiveTeamCalls(prev => ({
                         ...prev,
-                        [teamId]: { active, participants }
+                        [teamId]: { active, participants, ownerId }
                     }));
 
                     // If we are currently in this call, update our mesh connections if new people joined?

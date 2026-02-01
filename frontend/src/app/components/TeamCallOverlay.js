@@ -14,6 +14,7 @@ export default function TeamCallOverlay() {
         isAudioEnabled, 
         isVideoEnabled,
         currentTeamCallId,
+        activeTeamCalls, // Need this for owner info
         pendingJoinRequests,
         acceptJoinRequest,
         rejectJoinRequest,
@@ -23,8 +24,12 @@ export default function TeamCallOverlay() {
     } = useTeamCall();
 
     const [isMinimized, setIsMinimized] = useState(false);
+    const [pinnedSocketId, setPinnedSocketId] = useState(null); // SocketID of pinned user
+    const [isFullscreen, setIsFullscreen] = useState(false);
+    
     const localVideoRef = useRef(null);
     const remoteVideoRefs = useRef({});
+    const overlayRef = useRef(null); // Ref for fullscreen container
 
     // Attach local stream to video element
     useEffect(() => {
@@ -37,18 +42,84 @@ export default function TeamCallOverlay() {
     useEffect(() => {
         Object.entries(remoteStreams).forEach(([socketId, stream]) => {
             if (remoteVideoRefs.current[socketId]) {
-                remoteVideoRefs.current[socketId].srcObject = stream;
+                const el = remoteVideoRefs.current[socketId];
+                if (el.srcObject !== stream) el.srcObject = stream;
             }
         });
-    }, [remoteStreams]);
+    }, [remoteStreams, pinnedSocketId]); // Re-attach on layout change if needed
+
+    // Fullscreen toggle
+    const toggleFullscreen = () => {
+        if (!document.fullscreenElement) {
+            overlayRef.current?.requestFullscreen().catch(e => console.error(e));
+            setIsFullscreen(true);
+        } else {
+            document.exitFullscreen().catch(e => console.error(e));
+            setIsFullscreen(false);
+        }
+    };
+
+    // Listen for fullscreen change
+    useEffect(() => {
+        const handleFSChange = () => setIsFullscreen(!!document.fullscreenElement);
+        document.addEventListener('fullscreenchange', handleFSChange);
+        return () => document.removeEventListener('fullscreenchange', handleFSChange);
+    }, []);
 
     // Don't render if not in a call
     if (teamCallStatus !== 'connected' || !currentTeamCallId) {
         return null;
     }
 
+    // --- Hero Logic ---
+    const activeCall = activeTeamCalls[currentTeamCallId];
+    const ownerId = activeCall?.ownerId;
+    
+    // Find socketId of owner
+    const ownerParticipant = activeCall?.participants?.find(p => p.userId === ownerId);
+    let ownerSocketId = ownerParticipant?.socketId;
+    
+    // If we are the owner, identifying socket might be different or local
+    // activeCall.participants includes US. So if we are owner, ownerSocketId should match our socket (if we knew it)
+    // Actually, simple check: is ownerId our user id?
+    // But we don't have our user ID in context easily exposed. 
+    // Let's rely on finding ownerSocketId in remoteStreams OR assuming it's local if ownerParticipant is us.
+    
+    // Determine who is the "Hero" (Main View)
+    // Order: Pinned > Owner (if remote or local) > First Remote > Local
+    let heroSocketId = pinnedSocketId;
+    
+    if (!heroSocketId) {
+        // Default to Owner if available and in the call (remote or local)
+        if (ownerSocketId) {
+            // Is this owner remote?
+            if (remoteStreams[ownerSocketId]) heroSocketId = ownerSocketId;
+            // Is this owner us? (We can't easily distinguish 'local' socketId here without context, 
+            // but we can assume if not in remote, it might be us IF we are in list)
+            // But let's check if ownerSocketId is in active participants list and we are not finding him in remote
+            // logic: if ownerSocket is active but not in remote => It's US (Local).
+             else if (!remoteStreams[ownerSocketId] && activeCall.participants.some(p => p.socketId === ownerSocketId)) {
+                heroSocketId = 'local';
+             }
+        }
+    }
+    
+    // Fallback if no owner found or owner not connected yet
+    if (!heroSocketId) {
+        const firstRemote = Object.keys(remoteStreams)[0];
+        heroSocketId = firstRemote || 'local';
+    }
+
     const hasLocalVideo = localStream?.getVideoTracks().some(t => t.enabled);
-    const participantCount = 1 + Object.keys(remoteStreams).length; // Self + remotes
+    
+    // List of "Side" participants (everyone except Hero)
+    const sideParticipants = [];
+    if (heroSocketId !== 'local') sideParticipants.push('local');
+    Object.keys(remoteStreams).forEach(sid => {
+        if (sid !== heroSocketId) sideParticipants.push(sid);
+    });
+
+    const isHeroLocal = heroSocketId === 'local';
 
     // --- SVG Icons ---
     const IconMic = () => (
@@ -108,6 +179,16 @@ export default function TeamCallOverlay() {
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
             <line x1="1" y1="1" x2="23" y2="23"></line>
+        </svg>
+    );
+    const IconFullscreen = () => (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+        </svg>
+    );
+    const IconFullscreenExit = () => (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path>
         </svg>
     );
 
@@ -248,10 +329,45 @@ export default function TeamCallOverlay() {
         marginLeft: '16px',
     };
 
+    // --- Hero Layout Styles ---
+    const heroContainerStyle = {
+        flex: 1,
+        width: '100%',
+        position: 'relative',
+        background: '#000',
+        borderRadius: '16px',
+        overflow: 'hidden',
+        minHeight: '0',
+    };
+
+    const thumbnailStripStyle = {
+        height: '140px',
+        display: 'flex',
+        gap: '12px',
+        padding: '12px 0 0 0',
+        overflowX: 'auto',
+        width: '100%',
+        marginTop: 'auto',
+    };
+    
+    const thumbnailStyle = (isActive) => ({
+        width: '180px',
+        height: '100%',
+        borderRadius: '12px',
+        background: '#1E293B',
+        position: 'relative',
+        overflow: 'hidden',
+        flexShrink: 0,
+        cursor: 'pointer',
+        border: isActive ? '3px solid #3B82F6' : '2px solid transparent',
+        transition: 'all 0.2s',
+    });
+
     // --- Render ---
     return (
         <AnimatePresence>
             <motion.div
+                ref={overlayRef}
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
@@ -333,106 +449,108 @@ export default function TeamCallOverlay() {
 
                             {/* Pending Join Requests (Host Only) */}
                             {pendingJoinRequests && pendingJoinRequests.length > 0 && (
-                                <div style={{ 
-                                    background: '#FFFBEB', 
-                                    border: '1px solid #FCD34D', 
-                                    borderRadius: '8px', 
-                                    margin: '16px 24px 0 24px', 
-                                    padding: '12px 16px' 
-                                }}>
-                                    <div style={{ fontWeight: 600, color: '#92400E', marginBottom: '8px' }}>
-                                        Demandes en attente ({pendingJoinRequests.length})
-                                    </div>
-                                    {pendingJoinRequests.map(req => (
-                                        <div key={req.socketId} style={{ 
-                                            display: 'flex', 
-                                            alignItems: 'center', 
-                                            justifyContent: 'space-between', 
-                                            padding: '8px 0',
-                                            borderTop: '1px solid #FDE68A'
-                                        }}>
-                                            <span style={{ color: '#78350F' }}>{req.firstname} veut rejoindre</span>
-                                            <div style={{ display: 'flex', gap: '8px' }}>
-                                                <button
-                                                    onClick={() => acceptJoinRequest(req.socketId)}
-                                                    style={{
-                                                        background: '#10B981',
-                                                        color: 'white',
-                                                        border: 'none',
-                                                        borderRadius: '6px',
-                                                        padding: '6px 12px',
-                                                        fontSize: '0.85rem',
-                                                        cursor: 'pointer'
-                                                    }}
-                                                >
-                                                    ✓ Accepter
-                                                </button>
-                                                <button
-                                                    onClick={() => rejectJoinRequest(req.socketId)}
-                                                    style={{
-                                                        background: '#EF4444',
-                                                        color: 'white',
-                                                        border: 'none',
-                                                        borderRadius: '6px',
-                                                        padding: '6px 12px',
-                                                        fontSize: '0.85rem',
-                                                        cursor: 'pointer'
-                                                    }}
-                                                >
-                                                    ✗ Refuser
-                                                </button>
+                                <div style={{ background: '#FFF7ED', padding: '12px 24px', borderBottom: '1px solid #FFEDD5' }}>
+                                    <h4 style={{ margin: '0 0 8px 0', fontSize: '0.9rem', color: '#9A3412' }}>Demandes ({pendingJoinRequests.length})</h4>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                        {pendingJoinRequests.map(req => (
+                                            <div key={req.socketId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'white', padding: '8px', borderRadius: '8px' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                    <img src={`http://localhost:3001/${req.picture}`} style={{ width: '32px', height: '32px', borderRadius: '50%' }} />
+                                                    <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>{req.firstname}</span>
+                                                </div>
+                                                <div style={{ display: 'flex', gap: '8px' }}>
+                                                    <button onClick={() => acceptJoinRequest(req.socketId)} style={{ background: '#22C55E', color: 'white', border: 'none', borderRadius: '4px', padding: '4px 8px', cursor: 'pointer' }}>Accepter</button>
+                                                    <button onClick={() => rejectJoinRequest(req.socketId)} style={{ background: '#EF4444', color: 'white', border: 'none', borderRadius: '4px', padding: '4px 8px', cursor: 'pointer' }}>Refuser</button>
+                                                </div>
                                             </div>
-                                        </div>
-                                    ))}
+                                        ))}
+                                    </div>
                                 </div>
                             )}
 
-                            {/* Video Grid */}
-                            <div style={getGridStyle()}>
-                                {/* Local Video (You) */}
-                                <div style={tileStyle}>
-                                    {hasLocalVideo ? (
-                                        <video 
+                            {/* Main Content (Hero Layout) */}
+                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '16px', gap: '8px', minHeight: 0, justifyContent: 'center' }}>
+                                
+                                {/* Hero View */}
+                                <div style={heroContainerStyle}>
+                                    {isHeroLocal ? (
+                                         <video 
                                             ref={el => {
-                                                if (el && localStream && el.srcObject !== localStream) {
-                                                    el.srcObject = localStream;
-                                                }
+                                                if(el && localStream && el.srcObject !== localStream) el.srcObject = localStream;
                                                 localVideoRef.current = el;
                                             }} 
-                                            autoPlay 
-                                            muted 
-                                            playsInline 
-                                            style={videoStyle} 
+                                            autoPlay muted playsInline style={{ width: '100%', height: '100%', objectFit: 'contain' }} 
                                         />
                                     ) : (
-                                        <div style={avatarPlaceholderStyle}>V</div>
-                                    )}
-                                    <div style={nameTagStyle}>
-                                        {!isAudioEnabled && <span style={{ marginRight: '6px' }}>🔇</span>}
-                                        Vous
-                                    </div>
-                                </div>
-
-                                {/* Remote Videos */}
-                                {Object.entries(remoteStreams).map(([socketId, stream]) => (
-                                    <div key={socketId} style={tileStyle}>
-                                        <video
+                                         <video
                                             ref={el => {
                                                 if (el) {
-                                                    remoteVideoRefs.current[socketId] = el;
-                                                    // Attach stream immediately when element is created
-                                                    if (el.srcObject !== stream) {
-                                                        el.srcObject = stream;
+                                                    remoteVideoRefs.current[heroSocketId] = el;
+                                                    if (remoteStreams[heroSocketId] && el.srcObject !== remoteStreams[heroSocketId]) {
+                                                        el.srcObject = remoteStreams[heroSocketId];
                                                     }
                                                 }
                                             }}
-                                            autoPlay
-                                            playsInline
-                                            style={videoStyle}
+                                            autoPlay playsInline style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                                         />
-                                        <div style={nameTagStyle}>Participant</div>
+                                    )}
+                                    
+                                    <div style={{...nameTagStyle, fontSize: '14px', padding: '6px 12px'}}>
+                                        {isHeroLocal ? <span>Vous {activeCall?.ownerId === localStream?.id ? '(Hôte)' : ''}</span> : 'Participant'} 
                                     </div>
-                                ))}
+                                    
+                                    {/* Unpin Button if pinned */}
+                                    {pinnedSocketId && (
+                                        <button 
+                                            onClick={() => setPinnedSocketId(null)}
+                                            style={{
+                                                position: 'absolute', top: '12px', right: '12px',
+                                                background: 'rgba(0,0,0,0.5)', color: 'white',
+                                                border: 'none', borderRadius: '8px', padding: '8px',
+                                                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                            }}
+                                            title="Réduire"
+                                        >
+                                            <IconMinimize />
+                                        </button>
+                                    )}
+                                </div>
+
+                                {/* Thumbnails Strip */}
+                                {sideParticipants.length > 0 && (
+                                    <div style={thumbnailStripStyle}>
+                                        {/* Show Local if not hero */}
+                                        {!isHeroLocal && (
+                                            <div style={thumbnailStyle(pinnedSocketId === 'local')} onClick={() => setPinnedSocketId('local')}>
+                                                <video 
+                                                    ref={el => {
+                                                        if(el && localStream && el.srcObject !== localStream) el.srcObject = localStream;
+                                                    }}
+                                                    autoPlay muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                                                />
+                                                <div style={nameTagStyle}>Vous</div>
+                                            </div>
+                                        )}
+
+                                        {/* Show Remotes not hero */}
+                                        {sideParticipants.filter(sid => sid !== 'local').map(sid => (
+                                            <div key={sid} style={thumbnailStyle(pinnedSocketId === sid)} onClick={() => setPinnedSocketId(sid)}>
+                                                <video
+                                                    ref={el => {
+                                                        if (el) {
+                                                            remoteVideoRefs.current[sid] = el;
+                                                            if (remoteStreams[sid] && el.srcObject !== remoteStreams[sid]) {
+                                                                el.srcObject = remoteStreams[sid];
+                                                            }
+                                                        }
+                                                    }}
+                                                    autoPlay playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                                />
+                                                <div style={nameTagStyle}>Participant</div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
 
                             {/* Control Bar */}
@@ -460,6 +578,9 @@ export default function TeamCallOverlay() {
                                 </button>
                                 <button onClick={leaveTeamCall} title="Quitter" style={hangupButtonStyle}>
                                     <IconHangup />
+                                </button>
+                                <button onClick={toggleFullscreen} title="Plein écran" style={buttonStyle(false)}>
+                                    {isFullscreen ? <IconFullscreenExit /> : <IconFullscreen />}
                                 </button>
                             </div>
                         </>

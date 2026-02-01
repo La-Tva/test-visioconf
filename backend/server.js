@@ -1138,7 +1138,8 @@ io.on('connection', (socket) => {
                                           'team-call-status': {
                                               teamId: team._id,
                                               active: true,
-                                              participants: Array.from(participants)
+                                              participants: Array.from(participants),
+                                              ownerId: team.owner._id
                                           }
                                       }));
                                  }
@@ -1251,7 +1252,8 @@ io.on('connection', (socket) => {
                                             'team-call-status': {
                                                 teamId: team._id,
                                                 active: true,
-                                                participants: Array.from(participants)
+                                                participants: Array.from(participants),
+                                                ownerId: team.owner._id
                                             }
                                         }));
                                     }
@@ -1350,7 +1352,8 @@ io.on('connection', (socket) => {
                                         'team-call-status': {
                                             teamId: team._id,
                                             active: participants.size > 0,
-                                            participants: Array.from(participants)
+                                            participants: Array.from(participants),
+                                            ownerId: team.owner._id
                                         }
                                     }));
                                 }

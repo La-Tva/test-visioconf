@@ -18,6 +18,8 @@ export default function TeamCallOverlay() {
         acceptJoinRequest,
         rejectJoinRequest,
         leaveNotification,
+        toggleScreenShare,
+        isScreenSharing,
     } = useTeamCall();
 
     const [isMinimized, setIsMinimized] = useState(false);
@@ -93,6 +95,19 @@ export default function TeamCallOverlay() {
     const IconMaximize = () => (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"></path>
+        </svg>
+    );
+    const IconScreen = () => (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+            <line x1="8" y1="21" x2="16" y2="21"></line>
+            <line x1="12" y1="17" x2="12" y2="21"></line>
+        </svg>
+    );
+    const IconScreenOff = () => (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+            <line x1="1" y1="1" x2="23" y2="23"></line>
         </svg>
     );
 
@@ -408,6 +423,21 @@ export default function TeamCallOverlay() {
                                 </button>
                                 <button onClick={toggleVideo} title="Caméra" style={buttonStyle(isVideoEnabled)}>
                                     {isVideoEnabled ? <IconCam /> : <IconCamOff />}
+                                </button>
+                                <button onClick={toggleScreenShare} title="Partager l'écran" style={{
+                                    background: isScreenSharing ? '#3B82F6' : '#EFF6FF',
+                                    border: 'none',
+                                    borderRadius: '8px',
+                                    width: '48px',
+                                    height: '48px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    color: isScreenSharing ? 'white' : '#3B82F6',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s',
+                                }}>
+                                    {isScreenSharing ? <IconScreen /> : <IconScreenOff />}
                                 </button>
                                 <button onClick={leaveTeamCall} title="Quitter" style={hangupButtonStyle}>
                                     <IconHangup />

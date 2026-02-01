@@ -313,6 +313,16 @@ export default function TeamPage() {
                                     <div className={styles.lastMessage}>
                                         {team.members.length + 1} membre{team.members.length > 0 ? 's' : ''}
                                     </div>
+                                    {team.owner && (
+                                        <div className={styles.ownerInfo}>
+                                            <span>Par {team.owner.firstname}</span>
+                                            {team.owner.role && team.owner.role !== 'etudiant' && (
+                                                <span className={`${styles.roleBadge} ${styles[team.owner.role]}`} style={{marginLeft: 6}}>
+                                                    {team.owner.role}
+                                                </span>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                                 {activeTeam?._id === team._id && (
                                     <div style={{width:8, height:8, background:'#3B82F6', borderRadius:'50%'}}></div>

@@ -181,6 +181,38 @@
     text-overflow: ellipsis;
 }
 
+.ownerInfo {
+    font-size: 12px;
+    color: #94A3B8;
+    margin-top: 2px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.roleBadge {
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.admin {
+    background: #FFEDD5;
+    color: #C2410C;
+}
+
+.enseignant {
+    background: #E0E7FF;
+    color: #4338CA;
+}
+
+.etudiant {
+    background: #F1F5F9;
+    color: #64748B;
+}
+
 /* Chat Container (Adjusted) */
 .chatContainer {
     display: flex;

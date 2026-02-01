@@ -73,6 +73,7 @@ export default function TeamCallOverlay() {
 
     // --- Hero Logic ---
     const activeCall = activeTeamCalls[currentTeamCallId];
+    const participantCount = activeCall ? activeCall.participants.length : 1;
     const ownerId = activeCall?.ownerId;
     
     // Find socketId of owner

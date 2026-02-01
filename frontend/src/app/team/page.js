@@ -36,7 +36,7 @@ export default function TeamPage() {
     const { users } = usePreload(); 
     const { controleur, isReady } = useSocket();
     const { startCall } = useCall();
-    const { startTeamCall, joinTeamCall, activeTeamCalls, isBusy } = useTeamCall();
+    const { startTeamCall, joinTeamCall, activeTeamCalls, isBusy, currentTeamCallId, joinRequestStatus } = useTeamCall();
     const teamCompRef = useRef(null);
     const messagesEndRef = useRef(null);
     const activeTeamRef = useRef(activeTeam);
@@ -394,36 +394,43 @@ export default function TeamPage() {
                              <h2 className={styles.chatTitle}>{activeTeam.name}</h2>
                              
                              <div className={styles.headerActions}>
-                                 {activeTeamCalls[activeTeam._id]?.active ? (
+                                 {activeTeamCalls[activeTeam._id]?.active && currentTeamCallId !== activeTeam._id ? (
                                     <button 
                                         onClick={() => joinTeamCall(activeTeam._id)} 
-                                        disabled={isBusy}
-                                        title={isBusy ? "Connexion..." : "Rejoindre l'appel en cours"} 
+                                        disabled={isBusy || joinRequestStatus === 'pending'}
+                                        title={joinRequestStatus === 'pending' ? "En attente d'approbation de l'hôte..." : (isBusy ? "Connexion..." : "Rejoindre l'appel en cours")} 
                                         style={{
-                                            background: '#10B981', 
+                                            background: joinRequestStatus === 'pending' ? '#F59E0B' : '#10B981', 
                                             color: 'white', 
                                             padding: '0 24px', 
                                             borderRadius: '24px',
                                             marginRight: 12,
                                             border: 'none',
-                                            boxShadow: '0 0 20px rgba(16, 185, 129, 0.4)',
+                                            boxShadow: joinRequestStatus === 'pending' ? '0 0 20px rgba(245, 158, 11, 0.4)' : '0 0 20px rgba(16, 185, 129, 0.4)',
                                             display: 'flex',
                                             alignItems: 'center',
                                             gap: '10px',
                                             height: '44px',
-                                            animation: isBusy ? 'none' : 'pulse 2s infinite',
+                                            animation: (isBusy || joinRequestStatus === 'pending') ? 'none' : 'pulse 2s infinite',
                                             fontWeight: 700,
                                             fontSize: '0.9rem',
                                             letterSpacing: '0.05em',
-                                            cursor: isBusy ? 'not-allowed' : 'pointer',
+                                            cursor: (isBusy || joinRequestStatus === 'pending') ? 'not-allowed' : 'pointer',
                                             transition: 'transform 0.2s',
-                                            opacity: isBusy ? 0.7 : 1
+                                            opacity: (isBusy || joinRequestStatus === 'pending') ? 0.9 : 1
                                         }}
                                         onMouseOver={(e) => e.target.style.transform = 'scale(1.05)'}
                                         onMouseOut={(e) => e.target.style.transform = 'scale(1)'}
                                     >
-                                        REJOINDRE
-                                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M15 10l-4 4l6 6l4 -16l-18 7l4 2l2 6l3 -4"></path></svg>
+                                        {joinRequestStatus === 'pending' ? 'EN ATTENTE...' : 'REJOINDRE'}
+                                        {joinRequestStatus === 'pending' ? (
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{animation: 'spin 1s linear infinite'}}>
+                                                <circle cx="12" cy="12" r="10"></circle>
+                                                <path d="M12 6v6l4 2"></path>
+                                            </svg>
+                                        ) : (
+                                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M15 10l-4 4l6 6l4 -16l-18 7l4 2l2 6l3 -4"></path></svg>
+                                        )}
                                     </button>
                                  ) : (
                                      isOwner && (

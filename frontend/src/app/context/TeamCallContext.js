@@ -27,12 +27,16 @@ export function TeamCallProvider({ children }) {
     const [isVideoEnabled, setIsVideoEnabled] = useState(true);
     const [isScreenSharing, setIsScreenSharing] = useState(false);
     const [isBusy, setIsBusy] = useState(false); // Validating media access / joining
+    const [pendingJoinRequests, setPendingJoinRequests] = useState([]); // Host sees these requests
+    const [joinRequestStatus, setJoinRequestStatus] = useState('idle'); // 'idle' | 'pending' | 'accepted' | 'rejected'
+    const [leaveNotification, setLeaveNotification] = useState(null); // { firstname } - shows toast when someone leaves
 
     // Refs
     const peerConnections = useRef({}); // socketId -> RTCPeerConnection
     const callCompRef = useRef(null);
     const localVideoRef = useRef(null); // Optional ref if we want to manage it here, but Overlay handles it usually
     const currentTeamIdRef = useRef(null); // For access in callbacks
+    const localStreamRef = useRef(null); // For access in callbacks (avoids stale closure)
 
     // --- Socket Setup ---
     useEffect(() => {
@@ -113,19 +117,78 @@ export function TeamCallProvider({ children }) {
                         alert("L'hôte a terminé l'appel.");
                     }
                 }
+
+                // 7. MESH FIX: New joiner notification -> Existing participant initiates connection
+                else if (msg['notify-new-joiner']) {
+                    const { teamId, newJoinerSocketId, newJoinerUser } = msg['notify-new-joiner'];
+                    if (currentTeamIdRef.current === teamId && newJoinerSocketId !== controleur.socketID) {
+                        console.log(`[MESH] Received notify-new-joiner for ${newJoinerSocketId}. Initiating connection...`);
+                        createMeshConnection(newJoinerSocketId, true, teamId);
+                    }
+                }
+
+                // 8. JOIN REQUEST: Host receives a join request from a member
+                else if (msg['join-request-received']) {
+                    const { teamId, requester } = msg['join-request-received'];
+                    if (currentTeamIdRef.current === teamId) {
+                        console.log(`Join request received from ${requester.firstname}`);
+                        setPendingJoinRequests(prev => {
+                            // Avoid duplicates
+                            if (prev.some(r => r.socketId === requester.socketId)) return prev;
+                            return [...prev, requester];
+                        });
+                    }
+                }
+
+                // 9. JOIN REQUEST STATUS: Member gets response from host
+                else if (msg['join-request-status']) {
+                    const { teamId, status } = msg['join-request-status'];
+                    console.log(`Join request status: ${status}`);
+                    setJoinRequestStatus(status);
+                    
+                    if (status === 'accepted') {
+                        // Request approved! We are now officially in the call
+                        setTeamCallStatus('connected');
+                        setCurrentTeamCallId(teamId);
+                        currentTeamIdRef.current = teamId;
+                        setIsBusy(false);
+                        // The mesh connections will be initiated by existing participants (notify-new-joiner)
+                    } else if (status === 'rejected') {
+                        // Request rejected
+                        alert("Votre demande a été refusée par l'hôte.");
+                        cleanup();
+                    } else if (status === 'no_call') {
+                        alert("L'appel n'existe plus.");
+                        cleanup();
+                    }
+                }
+
+                // 10. Participant left notification (with name)
+                else if (msg['participant-left-notification']) {
+                    const { teamId, firstname } = msg['participant-left-notification'];
+                    if (currentTeamIdRef.current === teamId) {
+                        console.log(`${firstname} a quitté l'appel.`);
+                        // Show toast notification
+                        setLeaveNotification({ firstname });
+                        // Auto-clear after 3 seconds
+                        setTimeout(() => setLeaveNotification(null), 3000);
+                    }
+                }
             }
         };
 
         callCompRef.current = callComp;
+        console.log("Registering TeamCallComponent with Controleur...");
         controleur.inscription(callComp, 
-            ['call-peer-group', 'make-answer-group', 'ice-candidate-group', 'call-team', 'leave-group-call'], 
-            ['call-made-group', 'answer-made-group', 'ice-candidate-group', 'team-call-status', 'participant-left', 'team-call-ended']
+            ['call-peer-group', 'make-answer-group', 'ice-candidate-group', 'call-team', 'leave-group-call', 'join-request-response'], // Emission (Send)
+            ['call-made-group', 'answer-made-group', 'ice-candidate-group', 'team-call-status', 'participant-left', 'team-call-ended', 'notify-new-joiner', 'join-request-received', 'join-request-status', 'participant-left-notification'] // Subscription (Receive)
         );
 
         return () => {
+             console.log("Unregistering TeamCallComponent...");
              controleur.desincription(callComp, 
-                ['call-peer-group', 'make-answer-group', 'ice-candidate-group', 'call-team', 'leave-group-call'], 
-                ['call-made-group', 'answer-made-group', 'ice-candidate-group', 'team-call-status', 'participant-left', 'team-call-ended']
+                ['call-peer-group', 'make-answer-group', 'ice-candidate-group', 'call-team', 'leave-group-call', 'join-request-response'], 
+                ['call-made-group', 'answer-made-group', 'ice-candidate-group', 'team-call-status', 'participant-left', 'team-call-ended', 'notify-new-joiner', 'join-request-received', 'join-request-status', 'participant-left-notification']
             );
         };
     }, [controleur, isReady]);
@@ -143,6 +206,7 @@ export function TeamCallProvider({ children }) {
 
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
             setLocalStream(stream);
+            localStreamRef.current = stream; // Update ref for callbacks
             setIsAudioEnabled(true);
             setIsVideoEnabled(true);
 
@@ -166,6 +230,8 @@ export function TeamCallProvider({ children }) {
     const joinTeamCall = async (teamId) => {
         if (isBusy) return;
         setIsBusy(true);
+        setJoinRequestStatus('pending'); // Show "waiting for approval" UI
+        
         try {
              // Stop existing tracks if any
              if (localStream) {
@@ -176,54 +242,94 @@ export function TeamCallProvider({ children }) {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
             
             setLocalStream(stream);
+            localStreamRef.current = stream; // Update ref for callbacks
             setIsAudioEnabled(true);
             setIsVideoEnabled(false);
 
-            setTeamCallStatus('connected');
-            setCurrentTeamCallId(teamId);
-            currentTeamIdRef.current = teamId;
+            // DON'T set connected yet - we need host approval first
+            // The status will be set to 'connected' when join-request-status: accepted is received
 
-            // Notify server we are joining (via 'call-team' is easiest to add us to list?) 
-            // OR use 'call-team' again? server.js logic adds us to list if we call 'call-team'.
-            // AND since we are NOT owner, it checks activeGroupCalls. 
-            // If activeGroupCalls has teamId, it adds us. Perfect.
-            
+            // Send join REQUEST to server (server forwards to host)
             controleur.envoie(callCompRef.current, {
                 'call-team': { teamId } 
             });
 
-            // MESH: Initiate connections to EXISTING participants
-            const currentCall = activeTeamCalls[teamId];
-            if (currentCall && currentCall.participants) {
-                currentCall.participants.forEach(p => {
-                    if (p.socketId !== controleur.socketID) {
-                         createMeshConnection(p.socketId, true, teamId);
-                    }
-                });
-            }
+            console.log("[JOIN] Request sent to host. Waiting for approval...");
+            // isBusy stays true until response is received (handled in message handler)
 
         } catch (e) {
             console.error("Error joining team call:", e);
             alert("Erreur d'accès aux médias. Vérifiez votre caméra.");
-        } finally {
+            setJoinRequestStatus('idle');
             setIsBusy(false);
         }
+        // Note: setIsBusy(false) is now handled in the join-request-status handler
     };
 
-    const leaveTeamCall = () => {
-        if (currentTeamCallId) {
+    const leaveTeamCall = async () => {
+        if (isBusy) return; // Prevent double-clicking
+        setIsBusy(true);
+        
+        const teamIdToLeave = currentTeamCallId;
+        
+        // Cleanup local state first
+        cleanup();
+        
+        if (teamIdToLeave) {
             // Notify server
             controleur.envoie(callCompRef.current, {
-                 'leave-group-call': { teamId: currentTeamCallId }
+                 'leave-group-call': { teamId: teamIdToLeave }
             });
         }
-        cleanup();
+        
+        // Small delay to let server fully process before allowing rejoin
+        await new Promise(resolve => setTimeout(resolve, 500));
+        setIsBusy(false);
+    };
+
+    // --- Host: Accept/Reject Join Requests ---
+
+    const acceptJoinRequest = (requesterSocketId) => {
+        if (!currentTeamCallId) return;
+        
+        // Send acceptance to server
+        controleur.envoie(callCompRef.current, {
+            'join-request-response': {
+                teamId: currentTeamCallId,
+                requesterSocketId,
+                accepted: true
+            }
+        });
+        
+        // Remove from local pending list
+        setPendingJoinRequests(prev => prev.filter(r => r.socketId !== requesterSocketId));
+    };
+
+    const rejectJoinRequest = (requesterSocketId) => {
+        if (!currentTeamCallId) return;
+        
+        // Send rejection to server
+        controleur.envoie(callCompRef.current, {
+            'join-request-response': {
+                teamId: currentTeamCallId,
+                requesterSocketId,
+                accepted: false
+            }
+        });
+        
+        // Remove from local pending list
+        setPendingJoinRequests(prev => prev.filter(r => r.socketId !== requesterSocketId));
     };
 
     // --- Mesh Helpers ---
 
     const createMeshConnection = async (targetSocketId, isInitiator, teamId) => {
-        if (peerConnections.current[targetSocketId]) return peerConnections.current[targetSocketId];
+        // If we already have a connection, close it first to handle reconnects
+        // (in case participant-left wasn't received before rejoin)
+        if (peerConnections.current[targetSocketId]) {
+            console.log(`Closing existing connection to ${targetSocketId} before creating new one`);
+            closePeerConnection(targetSocketId);
+        }
 
         console.log(`Creating Mesh Connection to ${targetSocketId} (Initiator: ${isInitiator})`);
         const pc = new RTCPeerConnection(rtcConfig);
@@ -249,9 +355,13 @@ export function TeamCallProvider({ children }) {
             }
         };
 
-        // Add Local Tracks
-        if (localStream) {
-            localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+        // Add Local Tracks (use ref to avoid stale closure)
+        const currentStream = localStreamRef.current;
+        if (currentStream) {
+            console.log(`Adding ${currentStream.getTracks().length} tracks to peer connection`);
+            currentStream.getTracks().forEach(track => pc.addTrack(track, currentStream));
+        } else {
+            console.warn("No local stream available when creating mesh connection!");
         }
 
         if (isInitiator) {
@@ -306,10 +416,14 @@ export function TeamCallProvider({ children }) {
             localStream.getTracks().forEach(t => t.stop());
             setLocalStream(null);
         }
+        localStreamRef.current = null; // Reset ref for next call
         Object.keys(peerConnections.current).forEach(sid => closePeerConnection(sid));
         setTeamCallStatus('idle');
         setCurrentTeamCallId(null);
         currentTeamIdRef.current = null;
+        setPendingJoinRequests([]); // Clear pending requests
+        setJoinRequestStatus('idle'); // Reset request status
+        setIsBusy(false); // Reset busy state
     };
     
     // --- Toggles ---
@@ -333,6 +447,73 @@ export function TeamCallProvider({ children }) {
         }
     };
 
+    const toggleScreenShare = async () => {
+        if (isScreenSharing) {
+            // Stop Screen Share -> Revert to Camera
+            if (localStream) {
+                 const videoTrack = localStream.getVideoTracks()[0];
+                 if (videoTrack) {
+                      Object.values(peerConnections.current).forEach(pc => {
+                           const sender = pc.getSenders().find(s => s.track.kind === 'video');
+                           if (sender) sender.replaceTrack(videoTrack);
+                      });
+                 }
+            }
+            setIsScreenSharing(false);
+            // We don't stop the screen track explicitly here if it was already stopped via browser UI, 
+            // but if we triggered it via button, we might need to. 
+            // Actually, we usually replace the track in the *localStream* specifically? 
+            // No, for Mesh, we keep localStream as "Source of Truth" for visual feedback? 
+            // Let's keep localStream as CAMERA usually. 
+            // We just swap what is sent.
+        } else {
+             try {
+                 const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+                 const screenTrack = screenStream.getVideoTracks()[0];
+                 
+                 // Handle "Stop Sharing" from Browser UI
+                 screenTrack.onended = () => {
+                      if (localStream) {
+                           const camTrack = localStream.getVideoTracks()[0];
+                           if (camTrack) {
+                                Object.values(peerConnections.current).forEach(pc => {
+                                     const sender = pc.getSenders().find(s => s.track.kind === 'video');
+                                     if (sender) sender.replaceTrack(camTrack);
+                                });
+                           }
+                      }
+                      setIsScreenSharing(false);
+                 };
+
+                 Object.values(peerConnections.current).forEach(pc => {
+                      const sender = pc.getSenders().find(s => s.track.kind === 'video');
+                      if (sender) sender.replaceTrack(screenTrack);
+                 });
+                 
+                 setIsScreenSharing(true);
+                 // We could setLocalStream(screenStream) to see what we share, 
+                 // but ideally we want to see our camera in "Preview" maybe?
+                 // For now, let's update localStream to show the screen share to the user too.
+                 // This makes "Mute Video" button confused though.
+                 // Best practice: Keep localStream as "Self View".
+                 // But Zoom shows your screen in your box.
+                 // Let's swap the track in localStream too? 
+                 // No, localStream is a collection of tracks. 
+                 // Let's just rely on the fact we are sending it. 
+                 // But the UI uses `localStream` to render `<video ref={localVideoRef} />`.
+                 // So we SHOULD update localStream to show the screen share locally.
+                 
+                 // However, we must NOT lose the camera track reference to switch back!
+                 // The camera track is still in the original `localStream` object if we saved it?
+                 // `localStream` is state.
+                 // Let's NOT mutate localStream track. 
+                 // Let's assume the UI will show "You are sharing screen" overlay.
+             } catch (e) {
+                 console.error("Error sharing screen:", e);
+             }
+        }
+    };
+
     return (
         <TeamCallContext.Provider value={{
             startTeamCall,
@@ -346,8 +527,16 @@ export function TeamCallProvider({ children }) {
             toggleVideo,
             isAudioEnabled,
             isVideoEnabled,
+            toggleScreenShare,
+            isScreenSharing,
             currentTeamCallId,
-            isBusy
+            isBusy,
+            // Join Request System
+            pendingJoinRequests,
+            joinRequestStatus,
+            acceptJoinRequest,
+            rejectJoinRequest,
+            leaveNotification
         }}>
             {children}
         </TeamCallContext.Provider>

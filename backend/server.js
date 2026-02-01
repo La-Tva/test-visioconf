@@ -28,6 +28,7 @@ mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/visioconf')
 // Call Tracking
 const activeCalls = new Map(); // socketId -> Set of targetSocketIds
 const activeGroupCalls = new Map(); // teamId -> Set of { socketId, userId, user }
+const pendingJoinRequests = new Map(); // teamId -> Set of { socketId, userId, user, timestamp }
 
 function getActiveCallsCount() {
     let totalPairs = 0;
@@ -679,6 +680,17 @@ io.on('connection', (socket) => {
                          }
                     }
 
+                    if (activeGroupCalls.has(teamId)) {
+                         const participants = activeGroupCalls.get(teamId);
+                         socket.emit('message', JSON.stringify({
+                             'team-call-status': {
+                                 teamId: teamId,
+                                 active: true,
+                                 participants: Array.from(participants)
+                             }
+                         }));
+                    }
+
                     socket.emit('message', JSON.stringify({
                         team_messages: {
                             teamId: teamId,
@@ -1097,61 +1109,180 @@ io.on('connection', (socket) => {
                         const isOwner = team.owner._id.toString() === caller._id.toString();
                         const isAlreadyActive = activeGroupCalls.has(teamId);
 
-                        if (!isAlreadyActive && !isOwner) {
-                            console.log(`Unauthorized call start attempt by ${caller.firstname} in team ${team.name}`);
-                            return; // Do not start if not owner and not active
-                        }
+                        // CASE 1: Owner starts the call
+                        if (isOwner) {
+                            if (!activeGroupCalls.has(teamId)) {
+                                activeGroupCalls.set(teamId, new Set());
+                                pendingJoinRequests.set(teamId, new Set()); // Initialize pending requests
+                            }
+                            const participants = activeGroupCalls.get(teamId);
+                            
+                            // Add owner if not already there
+                            let alreadyIn = false;
+                            participants.forEach(p => { if(p.socketId === socket.id) alreadyIn = true; });
+                            if(!alreadyIn) {
+                                participants.add({ 
+                                    socketId: socket.id, 
+                                    userId: caller._id, 
+                                    user: { firstname: caller.firstname, picture: caller.picture, _id: caller._id } 
+                                });
+                            }
 
-                        // Start or Join Group Call Session
-                        if (!activeGroupCalls.has(teamId)) {
-                            activeGroupCalls.set(teamId, new Set());
-                        }
-                        const participants = activeGroupCalls.get(teamId);
-                        
-                        // Add caller if not already there
-                        let alreadyIn = false;
-                        participants.forEach(p => { if(p.socketId === socket.id) alreadyIn = true; });
-                        if(!alreadyIn) {
-                            participants.add({ 
-                                socketId: socket.id, 
-                                userId: caller._id, 
-                                user: { firstname: caller.firstname, picture: caller.picture, _id: caller._id } 
-                            });
-                        }
-
-                        const recipients = [...team.members, team.owner];
-                        console.log(`Team call notification for ${team.name} from ${caller.firstname}`);
-                        
-                        // Broadcast the CALL STATUS to the team
-                        for (const recipient of recipients) {
-                             if (recipient.socket_id && recipient.is_online) {
-                                  io.to(recipient.socket_id).emit('message', JSON.stringify({
-                                      'team-call-status': {
-                                          teamId: team._id,
-                                          active: true,
-                                          participants: Array.from(participants)
-                                      }
-                                  }));
-                                  
-                                  // If this is the FIRST offer (start of call), notify others to "Answer"
-                                  // But for "Anytime Join", we might prefer a simpler "Call Made" signal
-                                  if (recipient._id.toString() !== caller._id.toString()) {
+                            const recipients = [...team.members, team.owner];
+                            console.log(`Team call STARTED by owner ${caller.firstname} for ${team.name}`);
+                            
+                            // Broadcast the CALL STATUS to the team
+                            for (const recipient of recipients) {
+                                 if (recipient.socket_id && recipient.is_online) {
                                       io.to(recipient.socket_id).emit('message', JSON.stringify({
-                                          'call-made-group': {
-                                              offer: offer,
-                                              socket: socket.id,
-                                              user: { firstname: caller.firstname, picture: caller.picture, _id: caller._id },
-                                              teamName: team.name,
-                                              teamId: team._id
+                                          'team-call-status': {
+                                              teamId: team._id,
+                                              active: true,
+                                              participants: Array.from(participants)
                                           }
                                       }));
-                                  }
+                                 }
+                            }
+                            broadcastUserCallStatus(socket.id);
+                        }
+                        // CASE 2: Member wants to join -> Send request to host
+                        else if (isAlreadyActive) {
+                            console.log(`${caller.firstname} is REQUESTING to join call in ${team.name}`);
+                            
+                            // Store the pending request
+                            if (!pendingJoinRequests.has(teamId)) {
+                                pendingJoinRequests.set(teamId, new Set());
+                            }
+                            const requests = pendingJoinRequests.get(teamId);
+                            
+                            // Check if already requested
+                            let alreadyRequested = false;
+                            requests.forEach(r => { if(r.socketId === socket.id) alreadyRequested = true; });
+                            
+                            if (!alreadyRequested) {
+                                requests.add({
+                                    socketId: socket.id,
+                                    userId: caller._id,
+                                    user: { firstname: caller.firstname, picture: caller.picture, _id: caller._id },
+                                    timestamp: Date.now()
+                                });
+                            }
+                            
+                            // Send request to HOST (team owner)
+                            if (team.owner.socket_id && team.owner.is_online) {
+                                io.to(team.owner.socket_id).emit('message', JSON.stringify({
+                                    'join-request-received': {
+                                        teamId: team._id.toString(),
+                                        requester: { 
+                                            socketId: socket.id, 
+                                            firstname: caller.firstname, 
+                                            picture: caller.picture, 
+                                            _id: caller._id.toString() 
+                                        }
+                                    }
+                                }));
+                                console.log(`Join request sent to host ${team.owner.firstname}`);
+                            }
+                            
+                            // Notify the requester that request is pending
+                            io.to(socket.id).emit('message', JSON.stringify({
+                                'join-request-status': { teamId: team._id.toString(), status: 'pending' }
+                            }));
+                        }
+                        // CASE 3: No active call and not owner -> Cannot start
+                        else {
+                            console.log(`${caller.firstname} tried to join non-existent call in ${team.name}`);
+                            io.to(socket.id).emit('message', JSON.stringify({
+                                'join-request-status': { teamId: team._id.toString(), status: 'no_call' }
+                            }));
                         }
                     }
-                    broadcastUserCallStatus(socket.id);
-                }
                 } catch (e) {
                     console.error('Call team error:', e);
+                }
+            }
+            // HOST responds to a join request (accept/reject)
+            else if (message['join-request-response']) {
+                const { teamId, requesterSocketId, accepted } = message['join-request-response'];
+                console.log(`[JOIN-REQ-RESPONSE] Received: teamId=${teamId}, requester=${requesterSocketId}, accepted=${accepted}`);
+                try {
+                    const Team = require('./models/Team');
+                    const User = require('./models/User');
+                    const team = await Team.findById(teamId).populate('members').populate('owner');
+                    const responder = await User.findOne({ socket_id: socket.id });
+                    
+                    console.log(`[JOIN-REQ-RESPONSE] team=${team?.name}, responder=${responder?.firstname}, owner=${team?.owner?.firstname}`);
+                    
+                    // Verify responder is the owner
+                    if (team && responder && team.owner._id.toString() === responder._id.toString()) {
+                        // Remove from pending requests
+                        if (pendingJoinRequests.has(teamId)) {
+                            const requests = pendingJoinRequests.get(teamId);
+                            let requestToRemove = null;
+                            requests.forEach(r => { if(r.socketId === requesterSocketId) requestToRemove = r; });
+                            if (requestToRemove) requests.delete(requestToRemove);
+                        }
+                        
+                        if (accepted) {
+                            console.log(`Host ${responder.firstname} ACCEPTED join request from ${requesterSocketId}`);
+                            
+                            // Get requester info
+                            const requester = await User.findOne({ socket_id: requesterSocketId });
+                            if (requester && activeGroupCalls.has(teamId)) {
+                                const participants = activeGroupCalls.get(teamId);
+                                
+                                // Add requester to participants
+                                participants.add({ 
+                                    socketId: requesterSocketId, 
+                                    userId: requester._id, 
+                                    user: { firstname: requester.firstname, picture: requester.picture, _id: requester._id } 
+                                });
+                                
+                                // Notify requester they can join
+                                io.to(requesterSocketId).emit('message', JSON.stringify({
+                                    'join-request-status': { teamId: teamId, status: 'accepted' }
+                                }));
+                                
+                                // Broadcast updated participant list
+                                const recipients = [...team.members, team.owner];
+                                for (const recipient of recipients) {
+                                    if (recipient.socket_id && recipient.is_online) {
+                                        io.to(recipient.socket_id).emit('message', JSON.stringify({
+                                            'team-call-status': {
+                                                teamId: team._id,
+                                                active: true,
+                                                participants: Array.from(participants)
+                                            }
+                                        }));
+                                    }
+                                }
+                                
+                                // MESH: Notify EXISTING participants to initiate connection TO the new joiner
+                                participants.forEach(p => {
+                                    if (p.socketId !== requesterSocketId) {
+                                        io.to(p.socketId).emit('message', JSON.stringify({
+                                            'notify-new-joiner': {
+                                                teamId: team._id.toString(),
+                                                newJoinerSocketId: requesterSocketId,
+                                                newJoinerUser: { firstname: requester.firstname, picture: requester.picture, _id: requester._id }
+                                            }
+                                        }));
+                                        console.log(`[MESH] Notified ${p.socketId} to call new joiner ${requesterSocketId}`);
+                                    }
+                                });
+                                
+                                broadcastUserCallStatus(requesterSocketId);
+                            }
+                        } else {
+                            console.log(`Host ${responder.firstname} REJECTED join request from ${requesterSocketId}`);
+                            // Notify requester they were rejected
+                            io.to(requesterSocketId).emit('message', JSON.stringify({
+                                'join-request-status': { teamId: teamId, status: 'rejected' }
+                            }));
+                        }
+                    }
+                } catch (e) {
+                    console.error('Join request response error:', e);
                 }
             }
             else if (message['leave-group-call']) {
@@ -1163,9 +1294,6 @@ io.on('connection', (socket) => {
                     const team = await Team.findById(teamId).populate('members').populate('owner');
                     
                     if (team) {
-                        // Check if LEAVER is the OWNER
-                        const isOwner = team.owner._id.toString() === caller._id.toString(); // Wait, caller might not be defined here if we don't fetch it
-                        
                         // We need the user associated with socket first
                         const User = require('./models/User');
                         const leaver = await User.findOne({ socket_id: socket.id });
@@ -1175,16 +1303,20 @@ io.on('connection', (socket) => {
                             // OWNER LEFT -> END CALL FOR EVERYONE
                             activeGroupCalls.delete(teamId);
                             
-                            // Broadcast to team room (everyone viewing the page)
-                            // Send END event first (force close for participants)
-                            io.to(teamId).emit('message', JSON.stringify({
-                                'team-call-ended': { teamId: teamId, reason: 'owner_left' }
-                            }));
-
-                            // Then send STATUS update (hides button for everyone)
-                            io.to(teamId).emit('message', JSON.stringify({
-                                'team-call-status': { teamId: teamId, active: false, participants: [] }
-                            }));
+                            // Send to all team members (not using room since socket.join not set up)
+                            const allRecipients = [...team.members, team.owner];
+                            allRecipients.forEach(r => {
+                                if (r.socket_id && r.is_online) {
+                                    // Send END event (force close for participants)
+                                    io.to(r.socket_id).emit('message', JSON.stringify({
+                                        'team-call-ended': { teamId: teamId, reason: 'owner_left' }
+                                    }));
+                                    // Then send STATUS update (hides button for everyone)
+                                    io.to(r.socket_id).emit('message', JSON.stringify({
+                                        'team-call-status': { teamId: teamId, active: false, participants: [] }
+                                    }));
+                                }
+                            });
 
                             broadcastUserCallStatus(socket.id);
                             return; // Stop further processing
@@ -1195,20 +1327,31 @@ io.on('connection', (socket) => {
                     participants.forEach(p => { if(p.socketId === socket.id) userToRemove = p; });
                     if (userToRemove) {
                         participants.delete(userToRemove);
-                        console.log(`User ${socket.id} left team call ${teamId}`);
+                        console.log(`User ${userToRemove.user?.firstname || socket.id} left team call ${teamId}`);
                         
                         // Notify others
                         if (team) {
                             const recipients = [...team.members, team.owner];
                             recipients.forEach(r => {
                                 if (r.socket_id && r.is_online) {
+                                    // Send participant-left FIRST (so peers close old connection)
+                                    io.to(r.socket_id).emit('message', JSON.stringify({
+                                        'participant-left': { socket: socket.id, teamId: teamId }
+                                    }));
+                                    // Send notification with firstname (for UI toast)
+                                    io.to(r.socket_id).emit('message', JSON.stringify({
+                                        'participant-left-notification': { 
+                                            teamId: teamId, 
+                                            firstname: userToRemove.user?.firstname || 'Un participant' 
+                                        }
+                                    }));
+                                    // Then send updated status
                                     io.to(r.socket_id).emit('message', JSON.stringify({
                                         'team-call-status': {
                                             teamId: team._id,
                                             active: participants.size > 0,
                                             participants: Array.from(participants)
-                                        },
-                                        'participant-left': { socket: socket.id, teamId: teamId }
+                                        }
                                     }));
                                 }
                             });
@@ -1451,8 +1594,8 @@ io.on('connection', (socket) => {
         socket.on('demande_liste', () => {
         console.log('Received demande_liste');
         const listes = {
-            emission: ['login_status', 'registration_status', 'users', 'user_updating status', 'user_deleting_status', 'receive_friend_request', 'friend_request_accepted', 'messages', 'friends', 'auth status', 'friend_removed', 'last_messages', 'user_status_changed', 'user_registered', 'user_updated', 'user_deleted', 'team_creating_status', 'teams', 'receive_team_message', 'team_messages', 'leave_team_status', 'team_deleting_status', 'team_updating_status', 'files', 'file_uploading_status', 'file_updating_status', 'file_deleting_status', 'spaces', 'space_creating_status', 'space_deleting_status', 'call-made', 'answer-made', 'ice-candidate', 'call-rejected', 'call-ended', 'active_calls_count', 'user_call_status_changed'],
-            abonnement: ['login', 'register', 'get users', 'update user', 'delete_user', 'friend_request', 'friend_response', 'send message', 'get messages', 'get friends', 'authenticate', 'remove_friend', 'get_last_messages', 'create team', 'get teams', 'team_message', 'get_team_messages', 'leave_team', 'delete team', 'add_team_member', 'remove_team_member', 'get_files', 'get file', 'upload_file', 'update file', 'delete_file', 'create_space', 'get_spaces', 'delete_space', 'call-user', 'make-answer', 'ice-candidate', 'reject-call', 'hang-up', 'call-team', 'get_active_calls']
+            emission: ['login_status', 'registration_status', 'users', 'user_updating status', 'user_deleting_status', 'receive_friend_request', 'friend_request_accepted', 'messages', 'friends', 'auth status', 'friend_removed', 'last_messages', 'user_status_changed', 'user_registered', 'user_updated', 'user_deleted', 'team_creating_status', 'teams', 'receive_team_message', 'team_messages', 'leave_team_status', 'team_deleting_status', 'team_updating_status', 'files', 'file_uploading_status', 'file_updating_status', 'file_deleting_status', 'spaces', 'space_creating_status', 'space_deleting_status', 'call-made', 'answer-made', 'ice-candidate', 'call-rejected', 'call-ended', 'active_calls_count', 'user_call_status_changed', 'call-made-group', 'answer-made-group', 'ice-candidate-group', 'team-call-status', 'notify-new-joiner', 'participant-left', 'team-call-ended', 'join-request-received', 'join-request-status', 'participant-left-notification'],
+            abonnement: ['login', 'register', 'get users', 'update user', 'delete_user', 'friend_request', 'friend_response', 'send message', 'get messages', 'get friends', 'authenticate', 'remove_friend', 'get_last_messages', 'create team', 'get teams', 'team_message', 'get_team_messages', 'leave_team', 'delete team', 'add_team_member', 'remove_team_member', 'get_files', 'get file', 'upload_file', 'update file', 'delete_file', 'create_space', 'get_spaces', 'delete_space', 'call-user', 'make-answer', 'ice-candidate', 'reject-call', 'hang-up', 'call-team', 'get_active_calls', 'call-peer-group', 'make-answer-group', 'ice-candidate-group', 'leave-group-call', 'join-request-response']
         };
         socket.emit('donne_liste', JSON.stringify(listes));
     });

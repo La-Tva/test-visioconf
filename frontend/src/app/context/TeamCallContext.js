@@ -86,7 +86,7 @@ export function TeamCallProvider({ children }) {
 
                 // 3. Incoming Mesh Offer (Someone joined and is calling us)
                 else if (msg['call-made-group']) {
-                    const { offer, socket: senderSocket, user, teamId } = msg['call-made-group'];
+                    const { offer, socket: senderSocket, user, teamId, renegotiation } = msg['call-made-group'];
                     // Only accept if we are in the SAME team call or if this is an invitation?
                     // For Mesh, we only accept if we are ALREADY "connected" or "joining" this team call?
                     // Actually, if we are 'idle', this acts as an invitation we ignore visually (handled by UI "Join" button),
@@ -95,7 +95,7 @@ export function TeamCallProvider({ children }) {
                     
                     if (currentTeamIdRef.current === teamId) {
                         console.log("Accepting Mesh Offer from:", senderSocket);
-                        handleIncomingMeshOffer(senderSocket, offer, user);
+                        handleIncomingMeshOffer(senderSocket, offer, user, renegotiation);
                     }
                 }
 
@@ -363,12 +363,36 @@ export function TeamCallProvider({ children }) {
 
         // Remote Stream
         pc.ontrack = (event) => {
-            console.log(`Received track from ${targetSocketId}`);
+            console.log(`Received track from ${targetSocketId}: ${event.track.kind}`);
             if (event.streams[0]) {
                 setRemoteStreams(prev => ({
                     ...prev,
                     [targetSocketId]: event.streams[0]
                 }));
+            }
+        };
+
+        // Handle renegotiation when tracks are added dynamically
+        pc.onnegotiationneeded = async () => {
+            console.log(`[RENEGOTIATION] Negotiation needed for ${targetSocketId}`);
+            try {
+                // Only the initiator should create offers during renegotiation
+                // to avoid offer collision (glare)
+                if (pc.signalingState === 'stable') {
+                    const offer = await pc.createOffer();
+                    await pc.setLocalDescription(offer);
+                    controleur.envoie(callCompRef.current, {
+                        'call-peer-group': { 
+                            offer, 
+                            to: targetSocketId, 
+                            teamId: currentTeamIdRef.current,
+                            renegotiation: true 
+                        }
+                    });
+                    console.log(`[RENEGOTIATION] Sent new offer to ${targetSocketId}`);
+                }
+            } catch (e) {
+                console.error("Error during renegotiation:", e);
             }
         };
 
@@ -394,16 +418,24 @@ export function TeamCallProvider({ children }) {
         return pc;
     };
 
-    const handleIncomingMeshOffer = async (senderSocket, offer, user) => {
+    const handleIncomingMeshOffer = async (senderSocket, offer, user, isRenegotiation = false) => {
         const teamId = currentTeamIdRef.current;
-        console.log("Handle Incoming Mesh Offer from", senderSocket, offer);
+        console.log(`Handle Incoming Mesh Offer from ${senderSocket} (renegotiation: ${isRenegotiation})`);
 
         if (!offer || !offer.type || !offer.sdp) {
             console.error("Invalid offer received:", offer);
             return;
         }
 
-        const pc = await createMeshConnection(senderSocket, false, teamId);
+        let pc = peerConnections.current[senderSocket];
+        
+        // If it's a renegotiation and we have an existing connection, reuse it
+        if (isRenegotiation && pc && pc.signalingState !== 'closed') {
+            console.log(`[RENEGOTIATION] Reusing existing connection for ${senderSocket}`);
+        } else {
+            // Create new connection for initial offer
+            pc = await createMeshConnection(senderSocket, false, teamId);
+        }
         
         try {
             await pc.setRemoteDescription(new RTCSessionDescription(offer));
@@ -413,6 +445,7 @@ export function TeamCallProvider({ children }) {
             controleur.envoie(callCompRef.current, {
                 'make-answer-group': { answer, to: senderSocket }
             });
+            console.log(`Sent answer to ${senderSocket}`);
         } catch (e) { console.error("Error handling mesh offer:", e); }
     };
 

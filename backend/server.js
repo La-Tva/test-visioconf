@@ -1479,19 +1479,20 @@ io.on('connection', (socket) => {
                 }
             }
             else if (message['call-peer-group']) {
-                const { to, offer, teamId } = message['call-peer-group'];
+                const { to, offer, teamId, renegotiation } = message['call-peer-group'];
                  try {
                      const User = require('./models/User');
                      const caller = await User.findOne({ socket_id: socket.id });
                      
                      if (activeGroupCalls.has(teamId)) {
-                         console.log(`Forwarding GROUP call offer from ${socket.id} to ${to}`);
+                         console.log(`Forwarding GROUP call offer from ${socket.id} to ${to} (renegotiation: ${!!renegotiation})`);
                          io.to(to).emit('message', JSON.stringify({
                              'call-made-group': {
                                  offer: offer,
                                  socket: socket.id, 
                                  user: caller ? { firstname: caller.firstname, picture: caller.picture, _id: caller._id } : socket.id,
-                                 teamId
+                                 teamId,
+                                 renegotiation
                              }
                          }));
                      }

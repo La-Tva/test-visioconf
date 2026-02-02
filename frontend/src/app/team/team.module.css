@@ -213,6 +213,25 @@
     color: #64748B;
 }
 
+.unreadIndicator {
+    width: 8px;
+    height: 8px;
+    background: #3B82F6;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.systemMessage {
+    text-align: center;
+    color: #64748B;
+    font-size: 13px;
+    margin: 16px 0;
+    padding: 8px 16px;
+    background: #F1F5F9;
+    border-radius: 8px;
+    font-style: italic;
+}
+
 /* Chat Container (Adjusted) */
 .chatContainer {
     display: flex;

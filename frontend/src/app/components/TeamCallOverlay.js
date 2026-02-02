@@ -400,7 +400,7 @@ export default function TeamCallOverlay() {
                     </motion.div>
                 )}
 
-                <motion.div layout style={panelStyle}>
+                <motion.div ref={overlayRef} layout style={panelStyle}>
                     {isMinimized ? (
                         // --- Minimized View ("Entre deux") ---
                         <>

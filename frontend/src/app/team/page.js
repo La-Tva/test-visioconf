@@ -4,6 +4,7 @@ import { useSocket } from '../context/SocketContext';
 import { usePreload } from '../context/PreloadContext';
 import { useCall } from '../context/CallContext';
 import { useTeamCall } from '../context/TeamCallContext';
+import { useSounds } from '../context/SoundContext';
 import { AnimatePresence, motion } from 'framer-motion';
 import styles from './team.module.css';
 
@@ -32,11 +33,13 @@ export default function TeamPage() {
     const [filter, setFilter] = useState('all'); // 'all', 'student', 'admin'
     const [searchTerm, setSearchTerm] = useState('');
     const [showMembersList, setShowMembersList] = useState(false);
+    const [teamsWithUnread, setTeamsWithUnread] = useState(new Set()); // Track teams with unread messages
 
-    const { users } = usePreload(); 
+    const { users } = usePreload();
     const { controleur, isReady } = useSocket();
     const { startCall } = useCall();
-    const { startTeamCall, joinTeamCall, activeTeamCalls, isBusy, currentTeamCallId, joinRequestStatus } = useTeamCall();
+    const { startTeamCall, joinTeamCall, activeTeamCalls, isBusy, currentTeamCallId, joinRequestStatus, leaveNotification } = useTeamCall();
+    const { playMessageSend, playMessageReceive } = useSounds();
     const teamCompRef = useRef(null);
     const messagesEndRef = useRef(null);
     const activeTeamRef = useRef(activeTeam);
@@ -101,6 +104,10 @@ export default function TeamPage() {
                     const { message, teamId } = msg.receive_team_message;
                     if (currentActiveTeam && teamId === currentActiveTeam._id) {
                         setTeamMessages(prev => [...prev, message]);
+                        playMessageReceive();
+                    } else {
+                        // Mark team as having unread messages
+                        setTeamsWithUnread(prev => new Set([...prev, teamId]));
                     }
                 }
                 if (msg.leave_team_status || msg.team_deleting_status) {
@@ -196,6 +203,14 @@ export default function TeamPage() {
         console.log("Opening chat for team:", team);
         setActiveTeam(team);
         activeTeamRef.current = team; // Immediate update
+        
+        // Mark team as read
+        setTeamsWithUnread(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(team._id);
+            return newSet;
+        });
+        
         if (controleur && teamCompRef.current) {
              controleur.envoie(teamCompRef.current, {
                 get_team_messages: { 
@@ -208,6 +223,139 @@ export default function TeamPage() {
         }
     };
 
+    // Add system messages for call events
+    const prevTeamCallIdRef = useRef(null);
+    const prevParticipantsRef = useRef([]);
+
+    useEffect(() => {
+        if (!activeTeam) {
+            console.log('[Call Events] No active team');
+            return;
+        }
+        
+        const callData = activeTeamCalls[activeTeam._id];
+        const prevCallId = prevTeamCallIdRef.current;
+        
+        // Call is active if it exists AND has active flag true OR has participants
+        const isCallActive = callData && (callData.active === true || (callData.participants && callData.participants.length > 0));
+        
+        console.log('[Call Events] State:', {
+            teamId: activeTeam._id,
+            callData: !!callData,
+            isCallActive,
+            active: callData?.active,
+            prevCallId,
+            participants: callData?.participants?.length || 0
+        });
+        
+        // Call started
+        if (isCallActive && !prevCallId) {
+            console.log('[Call Events] Call STARTED');
+            const systemMsg = {
+                type: 'system',
+                content: '📞 Appel d\'équipe démarré',
+                timestamp: new Date()
+            };
+            setTeamMessages(prev => [...prev, systemMsg]);
+        }
+        
+        // Call ended
+        if (!isCallActive && prevCallId) {
+            // Check if there were participants who left when call ended
+            const prevParticipants = prevParticipantsRef.current;
+            if (prevParticipants.length > 0) {
+                // Show who left before showing call ended
+                prevParticipants.forEach(pp => {
+                    const name = pp.user?.firstname || pp.firstname;
+                    if (name) {
+                        console.log('[Call Events] User LEFT (on call end):', name);
+                        const systemMsg = {
+                            type: 'system',
+                            content: `👋 ${name} a quitté l'appel`,
+                            timestamp: new Date()
+                        };
+                        setTeamMessages(prev => [...prev, systemMsg]);
+                    }
+                });
+            }
+            
+            console.log('[Call Events] Call ENDED');
+            const systemMsg = {
+                type: 'system',
+                content: '📞 Appel d\'équipe terminé',
+                timestamp: new Date()
+            };
+            setTeamMessages(prev => [...prev, systemMsg]);
+        }
+        
+        // Track participant changes
+        if (isCallActive && callData.participants) {
+            const prevParticipants = prevParticipantsRef.current;
+            const currentParticipants = callData.participants;
+            
+            console.log('[Call Events] Participants:', {
+                prev: prevParticipants.length,
+                current: currentParticipants.length,
+                prevNames: prevParticipants.map(p => p.user?.firstname || p.firstname),
+                currentNames: currentParticipants.map(p => p.user?.firstname || p.firstname)
+            });
+            
+            // Someone joined
+            if (prevParticipants.length > 0 && currentParticipants.length > prevParticipants.length) {
+                const newParticipant = currentParticipants.find(cp => 
+                    !prevParticipants.some(pp => pp.socketId === cp.socketId)
+                );
+                const name = newParticipant?.user?.firstname || newParticipant?.firstname;
+                if (newParticipant && name) {
+                    console.log('[Call Events] User JOINED:', name);
+                    const systemMsg = {
+                        type: 'system',
+                        content: `👋 ${name} a rejoint l'appel`,
+                        timestamp: new Date()
+                    };
+                    setTeamMessages(prev => [...prev, systemMsg]);
+                }
+            }
+            
+            // Someone left  
+            if (prevParticipants.length > 0 && currentParticipants.length < prevParticipants.length) {
+                const leftParticipant = prevParticipants.find(pp => 
+                    !currentParticipants.some(cp => cp.socketId === pp.socketId)
+                );
+                const name = leftParticipant?.user?.firstname || leftParticipant?.firstname;
+                if (leftParticipant && name) {
+                    console.log('[Call Events] User LEFT:', name);
+                    const systemMsg = {
+                        type: 'system',
+                        content: `👋 ${name} a quitté l'appel`,
+                        timestamp: new Date()
+                    };
+                    setTeamMessages(prev => [...prev, systemMsg]);
+                }
+            }
+            
+            prevParticipantsRef.current = currentParticipants;
+        } else if (!isCallActive) {
+            // Reset participants when call ends
+            prevParticipantsRef.current = [];
+        }
+        
+        prevTeamCallIdRef.current = isCallActive ? activeTeam._id : null;
+    }, [activeTeamCalls, activeTeam]);
+
+    // Also listen to leaveNotification from TeamCallContext
+    useEffect(() => {
+        if (leaveNotification && activeTeam) {
+            console.log('[Call Events] Leave notification:', leaveNotification.firstname);
+            const systemMsg = {
+                type: 'system',
+                content: `👋 ${leaveNotification.firstname} a quitté l'appel`,
+                timestamp: new Date()
+            };
+            setTeamMessages(prev => [...prev, systemMsg]);
+        }
+    }, [leaveNotification, activeTeam]);
+
     const handleSendMessage = (e) => {
         e.preventDefault();
         if (!inputMessage.trim() || !activeTeam || !currentUser) return;
@@ -219,6 +367,7 @@ export default function TeamPage() {
                 content: inputMessage
             }
         });
+        playMessageSend();
         setInputMessage('');
     };
 
@@ -324,8 +473,8 @@ export default function TeamPage() {
                                         </div>
                                     )}
                                 </div>
-                                {activeTeam?._id === team._id && (
-                                    <div style={{width:8, height:8, background:'#3B82F6', borderRadius:'50%'}}></div>
+                                {teamsWithUnread.has(team._id) && (
+                                    <div className={styles.unreadIndicator}></div>
                                 )}
                             </div>
                         );
@@ -418,6 +567,15 @@ export default function TeamPage() {
                                     <div className={styles.mainChatArea}>
                                         <div className={styles.messagesList}>
                                             {teamMessages.map((msg, index) => {
+                                                // Check if it's a system message
+                                                if (msg.type === 'system') {
+                                                    return (
+                                                        <div key={index} className={styles.systemMessage}>
+                                                            {msg.content}
+                                                        </div>
+                                                    );
+                                                }
+                                                
                                                 const isMe = msg.sender._id === currentUser._id;
                                                 return (
                                                     <div key={index} className={`${styles.messageRow} ${isMe ? styles.myMessageRow : styles.friendMessageRow}`}>

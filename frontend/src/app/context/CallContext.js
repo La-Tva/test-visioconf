@@ -1,6 +1,7 @@
 "use client";
-import React, { createContext, useContext, useState, useRef, useEffect } from 'react'; // Fixed import
+import React, { createContext, useContext, useState, useRef, useEffect } from 'react';
 import { useSocket } from './SocketContext';
+import { useSounds } from './SoundContext';
 
 const CallContext = createContext();
 
@@ -16,6 +17,7 @@ const rtcConfig = {
 
 export function CallProvider({ children }) {
     const { controleur, isReady } = useSocket();
+    const { playCallStart, playCallEnd } = useSounds();
     const [callStatus, setCallStatus] = useState('idle'); // idle, calling, receiving, connected
     const [incomingCall, setIncomingCall] = useState(null); // { offer, socket, user }
     const [remoteStream, setRemoteStream] = useState(null);
@@ -168,6 +170,7 @@ export function CallProvider({ children }) {
                             .then(() => {
                                 setCallStatus('connected');
                                 stopRingtone();
+                                playCallStart();
                                 startCallTimer();
                                 processCandidateQueue(); 
                             })
@@ -199,6 +202,7 @@ export function CallProvider({ children }) {
                  }
                  else if (msg['call-ended']) {
                      console.log("Call ended by remote.");
+                     playCallEnd();
                      stopRingtone();
                      cleanupCall();
                  }
@@ -328,6 +332,7 @@ export function CallProvider({ children }) {
             });
 
             setCallStatus('connected');
+            playCallStart();
             startCallTimer();
 
         } catch (err) {
@@ -541,6 +546,7 @@ export function CallProvider({ children }) {
                 'hang-up': { to: activeCallRef.current.to }
             });
         }
+        playCallEnd();
         cleanupCall();
     };
 

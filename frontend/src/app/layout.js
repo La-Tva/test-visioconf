@@ -6,6 +6,7 @@ import { SocketProvider } from "./context/SocketContext";
 import { PreloadProvider } from "./context/PreloadContext";
 import { CallProvider } from "./context/CallContext";
 import { TeamCallProvider } from "./context/TeamCallContext";
+import { SoundProvider } from "./context/SoundContext";
 import CallOverlay from "./components/CallOverlay";
 import TeamCallOverlay from "./components/TeamCallOverlay";
 
@@ -39,15 +40,17 @@ export default function RootLayout({ children }) {
       <body className={`${bricolage.variable} ${jakarta.variable}`}>
         <SocketProvider>
             <PreloadProvider>
-                <CallProvider>
-                    <TeamCallProvider>
-                        <CallOverlay />
-                        <TeamCallOverlay />
-                        <GlobalRequestHandler />
-                        <GlobalComponents />
-                        {children}
-                    </TeamCallProvider>
-                </CallProvider>
+                <SoundProvider>
+                    <CallProvider>
+                        <TeamCallProvider>
+                            <CallOverlay />
+                            <TeamCallOverlay />
+                            <GlobalRequestHandler />
+                            <GlobalComponents />
+                            {children}
+                        </TeamCallProvider>
+                    </CallProvider>
+                </SoundProvider>
             </PreloadProvider>
         </SocketProvider>
       </body>

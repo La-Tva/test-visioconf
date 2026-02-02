@@ -3,6 +3,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useSocket } from '../context/SocketContext';
 import { usePreload } from '../context/PreloadContext';
 import { useCall } from '../context/CallContext';
+import { useSounds } from '../context/SoundContext';
 import { AnimatePresence, motion } from 'framer-motion';
 import styles from './messages.module.css';
 
@@ -17,7 +18,8 @@ export default function MessagesPage() {
 
     const { friends: preloadedFriends, refreshData, markAsRead, setCurrentChatId } = usePreload();
     const { controleur, isReady } = useSocket();
-    const { startCall } = useCall(); 
+    const { startCall } = useCall();
+    const { playMessageSend, playMessageReceive } = useSounds(); 
 
     const messagesCompRef = useRef(null);
     const messagesEndRef = useRef(null);
@@ -72,6 +74,7 @@ export default function MessagesPage() {
                  else if (msg.receive_private_message) {
                      const newMsg = msg.receive_private_message;
                      setMessages(prev => [...prev, newMsg]);
+                     playMessageReceive();
 
                      if (selectedFriendRef.current && selectedFriendRef.current._id === newMsg.sender) {
                          markAsRead(newMsg.sender);
@@ -136,6 +139,7 @@ export default function MessagesPage() {
                 content: inputMessage
             }
         });
+        playMessageSend();
         setInputMessage('');
     };
 

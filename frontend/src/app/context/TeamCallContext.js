@@ -1,6 +1,7 @@
 "use client";
 import React, { createContext, useContext, useState, useRef, useEffect } from 'react';
 import { useSocket } from './SocketContext';
+import { useSounds } from './SoundContext';
 
 const TeamCallContext = createContext();
 
@@ -33,6 +34,7 @@ const rtcConfig = {
 
 export function TeamCallProvider({ children }) {
     const { controleur, isReady } = useSocket();
+    const { playCallStart, playCallEnd, playUserJoin, playUserLeave } = useSounds();
     
     // State
     const [teamCallStatus, setTeamCallStatus] = useState('idle'); // idle, connected
@@ -130,6 +132,7 @@ export function TeamCallProvider({ children }) {
 
                     if (currentTeamIdRef.current === teamId) {
                         console.log("Team call ended by owner.");
+                        playCallEnd();
                         cleanup();
                         alert("L'hôte a terminé l'appel.");
                     }
@@ -140,6 +143,7 @@ export function TeamCallProvider({ children }) {
                     const { teamId, newJoinerSocketId, newJoinerUser } = msg['notify-new-joiner'];
                     if (currentTeamIdRef.current === teamId && newJoinerSocketId !== controleur.socketID) {
                         console.log(`[MESH] Received notify-new-joiner for ${newJoinerSocketId}. Initiating connection...`);
+                        playUserJoin();
                         createMeshConnection(newJoinerSocketId, true, teamId);
                     }
                 }
@@ -165,6 +169,7 @@ export function TeamCallProvider({ children }) {
                     
                     if (status === 'accepted') {
                         // Request approved! We are now officially in the call
+                        playCallStart();
                         setTeamCallStatus('connected');
                         setCurrentTeamCallId(teamId);
                         currentTeamIdRef.current = teamId;
@@ -185,6 +190,7 @@ export function TeamCallProvider({ children }) {
                     const { teamId, firstname } = msg['participant-left-notification'];
                     if (currentTeamIdRef.current === teamId) {
                         console.log(`${firstname} a quitté l'appel.`);
+                        playUserLeave();
                         // Show toast notification
                         setLeaveNotification({ firstname });
                         // Auto-clear after 3 seconds

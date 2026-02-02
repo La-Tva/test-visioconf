@@ -23,7 +23,9 @@ export default function MessagesPage() {
 
     const messagesCompRef = useRef(null);
     const messagesEndRef = useRef(null);
+    const messagesListRef = useRef(null); // New Ref for container
     const selectedFriendRef = useRef(null);
+    const isInitialLoadRef = useRef(true);
 
     // Mobile Check
     useEffect(() => {
@@ -44,10 +46,37 @@ export default function MessagesPage() {
         return () => setCurrentChatId(null);
     }, [selectedFriend, setCurrentChatId]);
 
-    const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const scrollToBottom = (behavior) => {
+        if (messagesListRef.current) {
+            const { scrollHeight, clientHeight } = messagesListRef.current;
+            if(behavior === 'auto') {
+                messagesListRef.current.scrollTop = scrollHeight;
+            } else {
+                 messagesListRef.current.scrollTo({ top: scrollHeight, behavior: 'smooth' });
+            }
+        }
     };
-    useEffect(scrollToBottom, [messages]);
+
+    // Reset initial load flag on friend change
+    useEffect(() => {
+        isInitialLoadRef.current = true;
+        scrollToBottom("auto");
+    }, [selectedFriend]);
+
+    // Scroll on message update
+    useEffect(() => {
+        if (isInitialLoadRef.current) {
+            // First load -> Auto
+            setTimeout(() => scrollToBottom("auto"), 50);
+            // Only unset flag if we actually loaded messages (avoid unsetting on empty/loading state)
+            if (messages.length > 0) {
+                 isInitialLoadRef.current = false;
+            }
+        } else {
+             // Updates -> Smooth
+            setTimeout(() => scrollToBottom("smooth"), 50);
+        }
+    }, [messages]);
 
     useEffect(() => {
         if(preloadedFriends) setFriends(preloadedFriends);
@@ -104,6 +133,7 @@ export default function MessagesPage() {
 
     // --- Helpers ---
     const handleSelectFriend = (friend) => {
+        setMessages([]); // Clear messages to avoid visual glitch and ensuring scroll effect triggers properly
         setSelectedFriend(friend);
         markAsRead(friend._id);
         if (controleur && messagesCompRef.current && currentUser) {
@@ -222,6 +252,7 @@ export default function MessagesPage() {
                         animate={{ x: 0, opacity: 1 }}
                         exit={{ x: isMobile ? "100%" : -40, opacity: 0 }}
                         transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                        onAnimationComplete={() => scrollToBottom("smooth")}
                     >
                         {selectedFriend ? (
                             <>
@@ -277,7 +308,7 @@ export default function MessagesPage() {
                                     </button>
                                 </div>
                                 
-                                <div className={styles.messagesList}>
+                                <div className={styles.messagesList} ref={messagesListRef}>
                                     {messages.filter(m => 
                                         (m.sender === currentUser?._id && m.receiver === selectedFriend._id) ||
                                         (m.sender === selectedFriend._id && m.receiver === currentUser?._id)

@@ -17,7 +17,7 @@ const rtcConfig = {
 
 export function CallProvider({ children }) {
     const { controleur, isReady } = useSocket();
-    const { playCallStart, playCallEnd } = useSounds();
+    const { playCallStart, playCallEnd, playIncomingCall, playOutgoingCall, stopRingtone } = useSounds();
     const [callStatus, setCallStatus] = useState('idle'); // idle, calling, receiving, connected
     const [incomingCall, setIncomingCall] = useState(null); // { offer, socket, user }
     const [remoteStream, setRemoteStream] = useState(null);
@@ -29,68 +29,12 @@ export function CallProvider({ children }) {
 
     const peerConnection = useRef(null);
     const callTimerRef = useRef(null);
-    const ringtoneAudioRef = useRef(null); // Changed to Audio element
     const callCompRef = useRef(null);
     const candidateQueue = useRef([]); // ICE Candidate Queue
     const activeCallRef = useRef(null); // { to: socketId | userId, isCaller: boolean }
     const localCandidateQueue = useRef([]); // Local candidates (buffered)
 
-    // --- Ringtone Logic (File Based) ---
-    const playRingtone = (type = 'incoming') => {
-        if (type === 'incoming') {
-            try {
-                const audio = new Audio('/assets/sonnerie.mp3');
-                audio.loop = true;
-                audio.play().catch(e => console.error("Error playing ringtone:", e));
-                ringtoneAudioRef.current = audio;
-            } catch(e) {
-                console.error("Audio Play Error", e);
-            }
-        } else {
-            // Outgoing: Soft generated tone using AudioContext (Keep old logic for outgoing or just silence)
-            // For now, let's keep it simple or maybe re-use the file with lower volume/no loop?
-            // Let's stick to a simple generated beep for outgoing to distinguish.
-            try {
-                const AudioContext = window.AudioContext || window.webkitAudioContext;
-                const ctx = new AudioContext();
-                const osc = ctx.createOscillator();
-                const gain = ctx.createGain();
-                osc.connect(gain);
-                gain.connect(ctx.destination);
-                osc.frequency.setValueAtTime(440, ctx.currentTime);
-                gain.gain.setValueAtTime(0.05, ctx.currentTime);
-                osc.start();
-                
-                // Pulse effect
-                const loop = setInterval(() => {
-                    if(ctx.state === 'closed') { clearInterval(loop); return; }
-                    gain.gain.setValueAtTime(0.05, ctx.currentTime);
-                    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
-                }, 1500);
-                
-                // Store in a way we can stop it. reusing ringtoneAudioRef structure might be messy if mixed types.
-                // Let's store ctx/loop in a separate ref or object if needed, but for simplicity let's attach to ringtoneAudioRef as special obj
-                ringtoneAudioRef.current = { ctx, osc, loop, type: 'generated' };
-            } catch(e) {}
-        }
-    };
 
-    const stopRingtone = () => {
-        if (ringtoneAudioRef.current) {
-            if (ringtoneAudioRef.current.type === 'generated') {
-                 clearInterval(ringtoneAudioRef.current.loop);
-                 try {
-                     ringtoneAudioRef.current.osc.stop();
-                     ringtoneAudioRef.current.ctx.close();
-                 } catch(e) {}
-            } else {
-                // HTML5 Audio
-                ringtoneAudioRef.current.pause();
-                ringtoneAudioRef.current.currentTime = 0;
-            }
-            ringtoneAudioRef.current = null;
-        }
-    };
 
     const processCandidateQueue = async () => {
         if (peerConnection.current && candidateQueue.current.length > 0) {
@@ -136,7 +80,7 @@ export function CallProvider({ children }) {
                          setIncomingCall({ offer, socket: senderSocket, user });
                          if(user) setRemoteUser(user);
                          setCallStatus('receiving');
-                         playRingtone('incoming');
+                         playIncomingCall();
                          activeCallRef.current = { to: senderSocket, isCaller: false };
                      } else {
                          // Busy? Auto-reject?
@@ -271,7 +215,7 @@ export function CallProvider({ children }) {
             });
 
             setCallStatus('calling');
-            playRingtone('outgoing');
+            playOutgoingCall();
         } catch (err) {
             console.error("Mic Access Error:", err);
             alert("Erreur: Impossible d'accéder au micro.");

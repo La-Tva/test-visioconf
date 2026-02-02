@@ -41,17 +41,42 @@ export default function TeamPage() {
     const { startTeamCall, joinTeamCall, activeTeamCalls, isBusy, currentTeamCallId, joinRequestStatus, leaveNotification } = useTeamCall();
     const { playMessageSend, playMessageReceive } = useSounds();
     const teamCompRef = useRef(null);
-    const messagesEndRef = useRef(null);
     const activeTeamRef = useRef(activeTeam);
+    const messagesListRef = useRef(null);
+    const isInitialLoadRef = useRef(true);
 
     useEffect(() => {
         activeTeamRef.current = activeTeam;
     }, [activeTeam]);
 
-    const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const scrollToBottom = (behavior) => {
+        if (messagesListRef.current) {
+            const { scrollHeight, clientHeight } = messagesListRef.current;
+            if(behavior === 'auto') {
+                messagesListRef.current.scrollTop = scrollHeight;
+            } else {
+                 messagesListRef.current.scrollTo({ top: scrollHeight, behavior: 'smooth' });
+            }
+        }
     };
-    useEffect(scrollToBottom, [teamMessages, activeTeam]);
+
+    // Reset initial load flag on team change
+    useEffect(() => {
+        isInitialLoadRef.current = true;
+        scrollToBottom("auto"); 
+    }, [activeTeam]);
+
+    // Scroll on message update
+    useEffect(() => {
+        if (isInitialLoadRef.current) {
+            // First load -> Auto
+            setTimeout(() => scrollToBottom("auto"), 50);
+            if (teamMessages.length > 0) isInitialLoadRef.current = false;
+        } else {
+             // Updates -> Smooth
+            setTimeout(() => scrollToBottom("smooth"), 50);
+        }
+    }, [teamMessages]);
 
     useEffect(() => {
         const userStr = localStorage.getItem('user');
@@ -411,9 +436,19 @@ export default function TeamPage() {
                                     </div>
                                 )}
                                 </div>
-                                {teamsWithUnread.has(team._id) && (
-                                    <div className={styles.unreadIndicator}></div>
-                                )}
+                                {(() => {
+                                    const count = (team.unreadCounts && currentUser) ? (team.unreadCounts[currentUser._id] || 0) : 0;
+                                    const hasUnread = teamsWithUnread.has(team._id) || count > 0;
+                                    if (!hasUnread) return null;
+                                    
+                                    const display = count > 0 ? (count > 99 ? '99+' : count) : '!';
+                                    
+                                    return (
+                                        <div className={styles.unreadIndicator}>
+                                            {display}
+                                        </div>
+                                    );
+                                })()}
                             </div>
                         );
                     })}
@@ -503,7 +538,7 @@ export default function TeamPage() {
                                  
                                  <div className={styles.chatBody}>
                                     <div className={styles.mainChatArea}>
-                                        <div className={styles.messagesList}>
+                                        <div className={styles.messagesList} ref={messagesListRef}>
                                             {teamMessages.map((msg, index) => {
                                                 // Check if it's a system message
                                                 if (msg.type === 'system') {
@@ -533,7 +568,6 @@ export default function TeamPage() {
                                                     </div>
                                                 );
                                             })}
-                                            <div ref={messagesEndRef} />
                                         </div>
 
                                         <form className={styles.inputArea} onSubmit={handleSendMessage}>

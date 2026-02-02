@@ -1,5 +1,5 @@
 "use client";
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
 
 const SoundContext = createContext();
 
@@ -14,6 +14,8 @@ export function useSounds() {
 export function SoundProvider({ children }) {
     const [isMuted, setIsMuted] = useState(false);
     const [volume, setVolume] = useState(0.5); // Default volume 50%
+    const incomingRingRef = useRef(null);
+    const outgoingRingRef = useRef(null);
 
     // Generic sound player using Audio API
     const playSound = useCallback((filename) => {
@@ -59,21 +61,111 @@ export function SoundProvider({ children }) {
         playSound('notification.mp3');
     }, [playSound]);
 
-    // Call start
-    const playCallStart = useCallback(() => {
-        // Use generic tone or specific if available. User didn't give call start sound.
-        // But they gave 'sonnerie.mp3'. That sounds like a ringtone.
-        // Let's use 'sonnerie.mp3' for incoming call or call start?
-        // 'sonnerie.mp3' is large (297KB), likely a ringtone.
-        // I'll leave this empty or use the synthesized fallback if I hadn't removed it?
-        // Actually, I'll rewrite the synth fallback for these just in case, OR just accept that I only have files for messages.
-        // The user specifically asked for "notifs et son de envoie et receptions des messages".
-        // I will implement those. For others, I will leave them empty to avoid bad synth sounds if not wanted.
+    // Ringtone Logic
+    const playIncomingCall = useCallback(() => {
+        if (isMuted) return;
+        try {
+            if (!incomingRingRef.current) {
+                incomingRingRef.current = new Audio('/assets/sonnerie.mp3');
+                incomingRingRef.current.loop = true;
+            }
+            incomingRingRef.current.volume = volume;
+            incomingRingRef.current.play().catch(e => console.warn("Incoming ringtone error", e));
+        } catch(e) { console.error(e); }
+    }, [isMuted, volume]);
+
+    const playOutgoingCall = useCallback(() => {
+        if (isMuted) return;
+        try {
+            // Generated soft tone for outgoing
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            const ctx = new AudioContext();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.frequency.setValueAtTime(440, ctx.currentTime);
+            gain.gain.setValueAtTime(0.05 * volume, ctx.currentTime);
+            osc.start();
+            
+            const loop = setInterval(() => {
+                if(ctx.state === 'closed') { clearInterval(loop); return; }
+                gain.gain.setValueAtTime(0.05 * volume, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+            }, 1500);
+
+            outgoingRingRef.current = { ctx, osc, loop };
+        } catch(e) { console.error("Outgoing tone error", e); }
+    }, [isMuted, volume]);
+
+    const stopRingtone = useCallback(() => {
+        // Stop Incoming
+        if (incomingRingRef.current) {
+            incomingRingRef.current.pause();
+            incomingRingRef.current.currentTime = 0;
+        }
+        // Stop Outgoing
+        if (outgoingRingRef.current) {
+            clearInterval(outgoingRingRef.current.loop);
+            try {
+                outgoingRingRef.current.osc.stop();
+                outgoingRingRef.current.ctx.close();
+            } catch(e) {}
+            outgoingRingRef.current = null;
+        }
     }, []);
 
-    const playCallEnd = useCallback(() => {}, []);
-    const playUserJoin = useCallback(() => {}, []);
-    const playUserLeave = useCallback(() => {}, []);
+    const playCallStart = useCallback(() => {
+        if (isMuted) return;
+        try {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            const ctx = new AudioContext();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            
+            // "Ta-da" : 500Hz -> 800Hz
+            osc.frequency.setValueAtTime(500, ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(800, ctx.currentTime + 0.1);
+            
+            gain.gain.setValueAtTime(0.1 * volume, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+            
+            osc.start();
+            osc.stop(ctx.currentTime + 0.3);
+        } catch(e) {}
+    }, [isMuted, volume]);
+
+    const playCallEnd = useCallback(() => {
+        if (isMuted) return;
+        try {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            const ctx = new AudioContext();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            
+            // "Tu-dum" : 400Hz -> 200Hz
+            osc.frequency.setValueAtTime(400, ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 0.2);
+            
+            gain.gain.setValueAtTime(0.1 * volume, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
+            
+            osc.start();
+            osc.stop(ctx.currentTime + 0.2);
+        } catch(e) {}
+    }, [isMuted, volume]);
+    
+    const playUserJoin = useCallback(() => {
+        playSound('notification.mp3');
+    }, [playSound]);
+
+    const playUserLeave = useCallback(() => {
+        playSound('notification.mp3');
+    }, [playSound]);
 
     const toggleMute = useCallback(() => {
         setIsMuted(prev => !prev);
@@ -88,6 +180,9 @@ export function SoundProvider({ children }) {
         playCallEnd,
         playUserJoin,
         playUserLeave,
+        playIncomingCall,
+        playOutgoingCall,
+        stopRingtone,
         isMuted,
         toggleMute,
         volume,

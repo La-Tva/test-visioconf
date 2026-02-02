@@ -248,23 +248,6 @@ export default function TeamPage() {
         
         // Call ended
         if (!isCallActive && prevCallId) {
-            // Check if there were participants who left when call ended
-            const prevParticipants = prevParticipantsRef.current;
-            if (prevParticipants.length > 0) {
-                // Show who left before showing call ended
-                prevParticipants.forEach(pp => {
-                    const name = pp.user?.firstname || pp.firstname;
-                    if (name) {
-                        const systemMsg = {
-                            type: 'system',
-                            content: `👋 ${name} a quitté l'appel`,
-                            timestamp: new Date()
-                        };
-                        setTeamMessages(prev => [...prev, systemMsg]);
-                    }
-                });
-            }
-            
             const systemMsg = {
                 type: 'system',
                 content: '📞 Appel d\'équipe terminé',
@@ -273,44 +256,9 @@ export default function TeamPage() {
             setTeamMessages(prev => [...prev, systemMsg]);
         }
         
-        // Track participant changes
+        // Track participant changes (Internal update only, no messages)
         if (isCallActive && callData.participants) {
-            const prevParticipants = prevParticipantsRef.current;
-            const currentParticipants = callData.participants;
-            
-            // Someone joined
-            if (prevParticipants.length > 0 && currentParticipants.length > prevParticipants.length) {
-                const newParticipant = currentParticipants.find(cp => 
-                    !prevParticipants.some(pp => pp.socketId === cp.socketId)
-                );
-                const name = newParticipant?.user?.firstname || newParticipant?.firstname;
-                if (newParticipant && name) {
-                    const systemMsg = {
-                        type: 'system',
-                        content: `👋 ${name} a rejoint l'appel`,
-                        timestamp: new Date()
-                    };
-                    setTeamMessages(prev => [...prev, systemMsg]);
-                }
-            }
-            
-            // Someone left  
-            if (prevParticipants.length > 0 && currentParticipants.length < prevParticipants.length) {
-                const leftParticipant = prevParticipants.find(pp => 
-                    !currentParticipants.some(cp => cp.socketId === pp.socketId)
-                );
-                const name = leftParticipant?.user?.firstname || leftParticipant?.firstname;
-                if (leftParticipant && name) {
-                    const systemMsg = {
-                        type: 'system',
-                        content: `👋 ${name} a quitté l'appel`,
-                        timestamp: new Date()
-                    };
-                    setTeamMessages(prev => [...prev, systemMsg]);
-                }
-            }
-            
-            prevParticipantsRef.current = currentParticipants;
+            prevParticipantsRef.current = callData.participants;
         } else if (!isCallActive) {
             // Reset participants when call ends
             prevParticipantsRef.current = [];

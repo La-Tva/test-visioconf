@@ -39,8 +39,8 @@ export default function RootLayout({ children }) {
     <html lang="fr" suppressHydrationWarning>
       <body className={`${bricolage.variable} ${jakarta.variable}`}>
         <SocketProvider>
-            <PreloadProvider>
-                <SoundProvider>
+            <SoundProvider>
+                <PreloadProvider>
                     <CallProvider>
                         <TeamCallProvider>
                             <CallOverlay />
@@ -50,8 +50,8 @@ export default function RootLayout({ children }) {
                             {children}
                         </TeamCallProvider>
                     </CallProvider>
-                </SoundProvider>
-            </PreloadProvider>
+                </PreloadProvider>
+            </SoundProvider>
         </SocketProvider>
       </body>
     </html>

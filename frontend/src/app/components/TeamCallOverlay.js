@@ -311,14 +311,23 @@ export default function TeamCallOverlay() {
         fontWeight: 600,
     };
 
-    // Control Bar Style
+    // Control Bar Style (Floating, Glassmorphism)
     const controlBarStyle = {
+        position: 'absolute',
+        bottom: '24px',
+        left: '50%',
+        transform: 'translateX(-50%)',
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
-        gap: '12px',
-        padding: '16px',
-        borderTop: '1px solid #F1F5F9',
+        gap: '16px',
+        padding: '12px 24px',
+        background: 'rgba(15, 23, 42, 0.85)', 
+        backdropFilter: 'blur(12px)',
+        borderRadius: '9999px',
+        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
+        border: '1px solid rgba(255, 255, 255, 0.1)',
+        zIndex: 50,
     };
 
     const buttonStyle = (isActive, isDanger = false) => ({
@@ -493,27 +502,72 @@ export default function TeamCallOverlay() {
                             )}
 
                             {/* Main Content */}
-                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '16px', gap: '8px', minHeight: 0, justifyContent: 'center' }}>
+                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: isFullscreen ? '0' : '0 16px', gap: '8px', minHeight: 0, justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
                                 
                                 {isFullscreen ? (
-                                    /* GRID VIEW (Fullscreen) */
+                                    /* FULLSCREEN: Single Focused View */
+                                    <div style={{
+                                        width: '100%',
+                                        height: '100%',
+                                        background: '#000',
+                                        position: 'relative',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center'
+                                    }}>
+                                        {isHeroLocal ? (
+                                             <video 
+                                                ref={el => {
+                                                    if(el && localStream && el.srcObject !== localStream) el.srcObject = localStream;
+                                                    localVideoRef.current = el;
+                                                }} 
+                                                autoPlay muted playsInline style={{ width: '100%', height: '100%', objectFit: 'contain' }} 
+                                            />
+                                        ) : (
+                                             <video
+                                                ref={el => {
+                                                    if (el) {
+                                                        remoteVideoRefs.current[heroSocketId] = el;
+                                                        if (remoteStreams[heroSocketId] && el.srcObject !== remoteStreams[heroSocketId]) {
+                                                            el.srcObject = remoteStreams[heroSocketId];
+                                                        }
+                                                    }
+                                                }}
+                                                autoPlay playsInline style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                                            />
+                                        )}
+                                        
+                                        <div style={{...nameTagStyle, fontSize: '14px', padding: '6px 12px'}}>
+                                            {getParticipantName(heroSocketId, isHeroLocal)} 
+                                        </div>
+                                    </div>
+                                ) : (
+                                    /* NORMAL VIEW: Dynamic Grid (All Participants) */
                                     <div style={{
                                         display: 'grid',
                                         gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-                                        gap: '12px',
+                                        gap: '8px',
                                         width: '100%',
                                         height: '100%',
-                                        padding: '8px',
-                                        overflow: 'auto'
+                                        padding: '8px 8px 100px 8px', // Bottom padding for floating controls
+                                        overflowY: 'auto',
+                                        alignContent: 'center',
+                                        justifyContent: 'center' 
                                     }}>
-                                        {/* Local video */}
-                                        <div style={{
-                                            position: 'relative',
-                                            background: '#1E293B',
-                                            borderRadius: '12px',
-                                            overflow: 'hidden',
-                                            aspectRatio: '16/9'
-                                        }}>
+                                        {/* Local Video Tile */}
+                                        <div 
+                                            style={{
+                                                position: 'relative',
+                                                background: '#0F172A',
+                                                borderRadius: '12px',
+                                                overflow: 'hidden',
+                                                aspectRatio: '16/9',
+                                                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.2)',
+                                                border: pinnedSocketId === 'local' ? '3px solid #3B82F6' : '1px solid rgba(255,255,255,0.05)',
+                                                cursor: 'pointer'
+                                            }}
+                                            onClick={() => setPinnedSocketId(pinnedSocketId === 'local' ? null : 'local')}
+                                        >
                                             <video 
                                                 ref={el => {
                                                     if(el && localStream && el.srcObject !== localStream) el.srcObject = localStream;
@@ -524,28 +578,32 @@ export default function TeamCallOverlay() {
                                             />
                                             <div style={{
                                                 position: 'absolute', 
-                                                bottom: '8px', 
-                                                left: '8px',
-                                                background: 'rgba(0,0,0,0.7)', 
-                                                color: 'white',
-                                                padding: '4px 10px', 
-                                                borderRadius: '6px', 
-                                                fontSize: '0.85rem',
-                                                fontWeight: 500
+                                                bottom: '12px', left: '12px',
+                                                background: 'rgba(0,0,0,0.7)', color: 'white',
+                                                padding: '4px 10px', borderRadius: '6px', 
+                                                fontSize: '0.85rem', fontWeight: 600,
+                                                backdropFilter: 'blur(4px)'
                                             }}>
-                                                {getParticipantName('local', true)}
+                                                {getParticipantName('local', true)} (Vous)
                                             </div>
                                         </div>
 
-                                        {/* Remote videos */}
+                                        {/* Remote Video Tiles */}
                                         {Object.keys(remoteStreams).map(sid => (
-                                            <div key={sid} style={{
-                                                position: 'relative',
-                                                background: '#1E293B',
-                                                borderRadius: '12px',
-                                                overflow: 'hidden',
-                                                aspectRatio: '16/9'
-                                            }}>
+                                            <div 
+                                                key={sid} 
+                                                style={{
+                                                    position: 'relative',
+                                                    background: '#0F172A',
+                                                    borderRadius: '12px',
+                                                    overflow: 'hidden',
+                                                    aspectRatio: '16/9',
+                                                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.2)',
+                                                    border: pinnedSocketId === sid ? '3px solid #3B82F6' : '1px solid rgba(255,255,255,0.05)',
+                                                    cursor: 'pointer'
+                                                }}
+                                                onClick={() => setPinnedSocketId(pinnedSocketId === sid ? null : sid)}
+                                            >
                                                 <video
                                                     ref={el => {
                                                         if (el) {
@@ -560,134 +618,47 @@ export default function TeamCallOverlay() {
                                                 />
                                                 <div style={{
                                                     position: 'absolute', 
-                                                    bottom: '8px', 
-                                                    left: '8px',
-                                                    background: 'rgba(0,0,0,0.7)', 
-                                                    color: 'white',
-                                                    padding: '4px 10px', 
-                                                    borderRadius: '6px', 
-                                                    fontSize: '0.85rem',
-                                                    fontWeight: 500
+                                                    bottom: '12px', left: '12px',
+                                                    background: 'rgba(0,0,0,0.7)', color: 'white',
+                                                    padding: '4px 10px', borderRadius: '6px', 
+                                                    fontSize: '0.85rem', fontWeight: 600,
+                                                    backdropFilter: 'blur(4px)'
                                                 }}>
                                                     {getParticipantName(sid, false)}
                                                 </div>
                                             </div>
                                         ))}
                                     </div>
-                                ) : (
-                                    /* HERO + THUMBNAILS VIEW (Normal) */
-                                    <>
-                                        {/* Hero View */}
-                                        <div style={heroContainerStyle}>
-                                            {isHeroLocal ? (
-                                                 <video 
-                                                    ref={el => {
-                                                        if(el && localStream && el.srcObject !== localStream) el.srcObject = localStream;
-                                                        localVideoRef.current = el;
-                                                    }} 
-                                                    autoPlay muted playsInline style={{ width: '100%', height: '100%', objectFit: 'contain' }} 
-                                                />
-                                            ) : (
-                                                 <video
-                                                    ref={el => {
-                                                        if (el) {
-                                                            remoteVideoRefs.current[heroSocketId] = el;
-                                                            if (remoteStreams[heroSocketId] && el.srcObject !== remoteStreams[heroSocketId]) {
-                                                                el.srcObject = remoteStreams[heroSocketId];
-                                                            }
-                                                        }
-                                                    }}
-                                                    autoPlay playsInline style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                                                />
-                                            )}
-                                            
-                                            <div style={{...nameTagStyle, fontSize: '14px', padding: '6px 12px'}}>
-                                                {getParticipantName(heroSocketId, isHeroLocal)} 
-                                            </div>
-                                            
-                                            {/* Unpin Button if pinned */}
-                                            {pinnedSocketId && (
-                                                <button 
-                                                    onClick={() => setPinnedSocketId(null)}
-                                                    style={{
-                                                        position: 'absolute', top: '12px', right: '12px',
-                                                        background: 'rgba(0,0,0,0.5)', color: 'white',
-                                                        border: 'none', borderRadius: '8px', padding: '8px',
-                                                        cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center'
-                                                    }}
-                                                    title="Réduire"
-                                                >
-                                                    <IconMinimize />
-                                                </button>
-                                            )}
-                                        </div>
-
-                                        {/* Thumbnails Strip */}
-                                        {sideParticipants.length > 0 && (
-                                            <div style={thumbnailStripStyle}>
-                                                {/* Show Local if not hero */}
-                                                {!isHeroLocal && (
-                                                    <div style={thumbnailStyle(pinnedSocketId === 'local')} onClick={() => setPinnedSocketId('local')}>
-                                                        <video 
-                                                            ref={el => {
-                                                                if(el && localStream && el.srcObject !== localStream) el.srcObject = localStream;
-                                                            }}
-                                                            autoPlay muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                                                        />
-                                                        <div style={nameTagStyle}>{getParticipantName('local', true)}</div>
-                                                    </div>
-                                                )}
-
-                                                {/* Show Remotes not hero */}
-                                                {sideParticipants.filter(sid => sid !== 'local').map(sid => (
-                                                    <div key={sid} style={thumbnailStyle(pinnedSocketId === sid)} onClick={() => setPinnedSocketId(sid)}>
-                                                        <video
-                                                            ref={el => {
-                                                                if (el) {
-                                                                    remoteVideoRefs.current[sid] = el;
-                                                                    if (remoteStreams[sid] && el.srcObject !== remoteStreams[sid]) {
-                                                                        el.srcObject = remoteStreams[sid];
-                                                                    }
-                                                                }
-                                                            }}
-                                                            autoPlay playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                                        />
-                                                        <div style={nameTagStyle}>{getParticipantName(sid, false)}</div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </>
                                 )}
                             </div>
 
-                            {/* Control Bar */}
+                            {/* Control Bar (Floating) */}
                             <div style={controlBarStyle}>
-                                <button onClick={toggleAudio} title="Micro" style={buttonStyle(isAudioEnabled)}>
+                                <button onClick={toggleAudio} title="Micro" style={{...buttonStyle(isAudioEnabled), borderRadius: '50%', width: '56px', height: '56px' }}>
                                     {isAudioEnabled ? <IconMic /> : <IconMicOff />}
                                 </button>
-                                <button onClick={toggleVideo} title="Caméra" style={buttonStyle(isVideoEnabled)}>
+                                <button onClick={toggleVideo} title="Caméra" style={{...buttonStyle(isVideoEnabled), borderRadius: '50%', width: '56px', height: '56px' }}>
                                     {isVideoEnabled ? <IconCam /> : <IconCamOff />}
                                 </button>
                                 <button onClick={toggleScreenShare} title="Partager l'écran" style={{
-                                    background: isScreenSharing ? '#3B82F6' : '#EFF6FF',
-                                    border: 'none',
-                                    borderRadius: '8px',
-                                    width: '48px',
-                                    height: '48px',
+                                    background: isScreenSharing ? '#3B82F6' : '#1E293B',
+                                    border: '1px solid rgba(255,255,255,0.1)',
+                                    borderRadius: '50%',
+                                    width: '56px',
+                                    height: '56px',
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
-                                    color: isScreenSharing ? 'white' : '#3B82F6',
+                                    color: 'white',
                                     cursor: 'pointer',
                                     transition: 'all 0.2s',
                                 }}>
                                     {isScreenSharing ? <IconScreen /> : <IconScreenOff />}
                                 </button>
-                                <button onClick={leaveTeamCall} title="Quitter" style={hangupButtonStyle}>
+                                <button onClick={leaveTeamCall} title="Quitter" style={{...hangupButtonStyle, borderRadius: '50%', width: '56px', height: '56px'}}>
                                     <IconHangup />
                                 </button>
-                                <button onClick={toggleFullscreen} title="Plein écran" style={buttonStyle(false)}>
+                                <button onClick={toggleFullscreen} title="Plein écran" style={{...buttonStyle(false), background: '#1E293B', color: 'white', borderRadius: '50%', width: '56px', height: '56px', border: '1px solid rgba(255,255,255,0.1)' }}>
                                     {isFullscreen ? <IconFullscreenExit /> : <IconFullscreen />}
                                 </button>
                             </div>

@@ -1331,15 +1331,17 @@ io.on('connection', (socket) => {
                         const User = require('./models/User');
                         const leaver = await User.findOne({ socket_id: socket.id });
 
+                        // Define recipients for notification
+                        const recipients = [...team.members, team.owner];
+
                         if (leaver && team.owner._id.toString() === leaver._id.toString()) {
                             console.log(`Team Owner ${leaver.firstname} ended the call for team ${team.name}`);
                             // OWNER LEFT -> END CALL FOR EVERYONE
                             activeGroupCalls.delete(teamId);
                             
-                            // Send to all team members (not using room since socket.join not set up)
-                            const allRecipients = [...team.members, team.owner];
-                            allRecipients.forEach(r => {
-                                if (r.socket_id && r.is_online) {
+                            // Send to all team members
+                            recipients.forEach(r => {
+                                if (r && r.socket_id && r.is_online) {
                                     // Send END event (force close for participants)
                                     io.to(r.socket_id).emit('message', JSON.stringify({
                                         'team-call-ended': { teamId: teamId, reason: 'owner_left' }
@@ -1364,8 +1366,9 @@ io.on('connection', (socket) => {
                         
                         // Notify others
                         if (team) {
+                            const recipients = [...team.members, team.owner];
                             recipients.forEach(r => {
-                                if (r.socket_id && r.is_online) {
+                                if (r && r.socket_id && r.is_online) {
                                     // Send participant-left FIRST (so peers close old connection)
                                     io.to(r.socket_id).emit('message', JSON.stringify({
                                         'participant-left': { socket: socket.id, teamId: teamId }
@@ -1375,7 +1378,7 @@ io.on('connection', (socket) => {
                                         'participant-left-notification': { 
                                             teamId: teamId, 
                                             firstname: userToRemove.user?.firstname || 'Un participant' 
-                                        }
+                                        } 
                                     }));
                                     
                                     // Determine if call is still active
@@ -1606,7 +1609,71 @@ io.on('connection', (socket) => {
     socket.on('disconnect', async () => {
         console.log('User disconnected:', socket.id);
         
-        // Cleanup Active Calls
+        // --- Cleanup Group Calls (Abrupt Disconnect) ---
+        for (const [teamId, participants] of activeGroupCalls) {
+             let userToRemove = null;
+             participants.forEach(p => { if(p.socketId === socket.id) userToRemove = p; });
+             
+             if (userToRemove) {
+                 console.log(`[DISCONNECT] Removing ${userToRemove.user?.firstname} from team call ${teamId}`);
+                 try {
+                     const Team = require('./models/Team');
+                     const team = await Team.findById(teamId).populate('owner').populate('members');
+                     
+                     if (team) {
+                         const recipients = [...team.members, team.owner];
+                         const isOwner = team.owner._id.toString() === userToRemove.userId.toString();
+
+                         if (isOwner) {
+                             // OWNER DISCONNECTED -> END CALL
+                             console.log(`[DISCONNECT] Owner ${userToRemove.user?.firstname} disconnected. Ending call.`);
+                             activeGroupCalls.delete(teamId);
+                             recipients.forEach(r => {
+                                 if (r && r.socket_id && r.is_online && r.socket_id !== socket.id) {
+                                     io.to(r.socket_id).emit('message', JSON.stringify({
+                                         'team-call-ended': { teamId: teamId, reason: 'owner_left' }
+                                     }));
+                                     io.to(r.socket_id).emit('message', JSON.stringify({
+                                         'team-call-status': { teamId: teamId, active: false, participants: [] }
+                                     }));
+                                 }
+                             });
+                         } else {
+                             // MEMBER DISCONNECTED
+                             participants.delete(userToRemove);
+                             const isActive = participants.size > 0;
+                             
+                             recipients.forEach(r => {
+                                 if (r && r.socket_id && r.is_online && r.socket_id !== socket.id) {
+                                     io.to(r.socket_id).emit('message', JSON.stringify({
+                                         'participant-left': { socket: socket.id, teamId: teamId }
+                                     }));
+                                     io.to(r.socket_id).emit('message', JSON.stringify({
+                                        'participant-left-notification': { 
+                                            teamId: teamId, 
+                                            firstname: userToRemove.user?.firstname || 'Un participant' 
+                                        } 
+                                    }));
+                                     io.to(r.socket_id).emit('message', JSON.stringify({
+                                         'team-call-status': {
+                                             teamId: team._id,
+                                             active: isActive,
+                                             participants: Array.from(participants),
+                                             ownerId: team.owner._id
+                                         }
+                                     }));
+                                 }
+                             });
+                             if (participants.size === 0) activeGroupCalls.delete(teamId);
+                         }
+                     }
+                 } catch (e) {
+                     console.error("[DISCONNECT] Error cleaning up group call:", e);
+                 }
+             }
+        }
+
+        // Cleanup Active Calls (1-on-1)
         if (activeCalls.has(socket.id)) {
             const targets = activeCalls.get(socket.id);
             targets.forEach(targetId => {

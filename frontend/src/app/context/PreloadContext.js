@@ -1,11 +1,13 @@
 "use client";
 import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { useSocket } from './SocketContext';
+import { useSounds } from './SoundContext';
 
 const PreloadContext = createContext(null);
 
 export function PreloadProvider({ children }) {
     const { controleur, isReady } = useSocket();
+    const { playMessageReceive } = useSounds();
     const [friends, setFriends] = useState([]);
     const [users, setUsers] = useState([]);
     const [teams, setTeams] = useState([]);
@@ -125,6 +127,8 @@ export function PreloadProvider({ children }) {
                     const msgObj = msg.receive_private_message;
                     const senderId = typeof msgObj.sender === 'object' ? msgObj.sender._id : msgObj.sender;
                     
+                    playMessageReceive();
+
                     if (currentChatIdRef.current !== senderId) {
                         setFriends(prev => prev.map(f => {
                             if (f._id === senderId) {

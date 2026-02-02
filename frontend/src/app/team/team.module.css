@@ -232,6 +232,33 @@
     font-style: italic;
 }
 
+.activeCallBadge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    background: #10B981;
+    color: white;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 600;
+    margin-top: 8px;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+    animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.8;
+    }
+}
+
 /* Chat Container (Adjusted) */
 .chatContainer {
     display: flex;

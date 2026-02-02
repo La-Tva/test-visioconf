@@ -16,7 +16,22 @@ export function PreloadProvider({ children }) {
     const currentChatIdRef = useRef(null);
 
     const markAsRead = (friendId) => {
+        // Optimistic update
         setFriends(prev => prev.map(f => f._id === friendId ? { ...f, unreadCount: 0 } : f));
+        
+        // Persist to backend
+        if (preloadCompRef.current && controleur) {
+            const userStr = localStorage.getItem('user');
+            if (userStr) {
+                const user = JSON.parse(userStr);
+                controleur.envoie(preloadCompRef.current, {
+                    mark_messages_read: {
+                        userId: user._id,
+                        friendId: friendId
+                    }
+                });
+            }
+        }
     };
 
     const markTeamAsRead = (teamId) => {

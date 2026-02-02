@@ -228,10 +228,7 @@ export default function TeamPage() {
     const prevParticipantsRef = useRef([]);
 
     useEffect(() => {
-        if (!activeTeam) {
-            console.log('[Call Events] No active team');
-            return;
-        }
+        if (!activeTeam) return;
         
         const callData = activeTeamCalls[activeTeam._id];
         const prevCallId = prevTeamCallIdRef.current;
@@ -239,18 +236,8 @@ export default function TeamPage() {
         // Call is active if it exists AND has active flag true OR has participants
         const isCallActive = callData && (callData.active === true || (callData.participants && callData.participants.length > 0));
         
-        console.log('[Call Events] State:', {
-            teamId: activeTeam._id,
-            callData: !!callData,
-            isCallActive,
-            active: callData?.active,
-            prevCallId,
-            participants: callData?.participants?.length || 0
-        });
-        
         // Call started
         if (isCallActive && !prevCallId) {
-            console.log('[Call Events] Call STARTED');
             const systemMsg = {
                 type: 'system',
                 content: '📞 Appel d\'équipe démarré',
@@ -268,7 +255,6 @@ export default function TeamPage() {
                 prevParticipants.forEach(pp => {
                     const name = pp.user?.firstname || pp.firstname;
                     if (name) {
-                        console.log('[Call Events] User LEFT (on call end):', name);
                         const systemMsg = {
                             type: 'system',
                             content: `👋 ${name} a quitté l'appel`,
@@ -279,7 +265,6 @@ export default function TeamPage() {
                 });
             }
             
-            console.log('[Call Events] Call ENDED');
             const systemMsg = {
                 type: 'system',
                 content: '📞 Appel d\'équipe terminé',
@@ -293,13 +278,6 @@ export default function TeamPage() {
             const prevParticipants = prevParticipantsRef.current;
             const currentParticipants = callData.participants;
             
-            console.log('[Call Events] Participants:', {
-                prev: prevParticipants.length,
-                current: currentParticipants.length,
-                prevNames: prevParticipants.map(p => p.user?.firstname || p.firstname),
-                currentNames: currentParticipants.map(p => p.user?.firstname || p.firstname)
-            });
-            
             // Someone joined
             if (prevParticipants.length > 0 && currentParticipants.length > prevParticipants.length) {
                 const newParticipant = currentParticipants.find(cp => 
@@ -307,7 +285,6 @@ export default function TeamPage() {
                 );
                 const name = newParticipant?.user?.firstname || newParticipant?.firstname;
                 if (newParticipant && name) {
-                    console.log('[Call Events] User JOINED:', name);
                     const systemMsg = {
                         type: 'system',
                         content: `👋 ${name} a rejoint l'appel`,
@@ -324,7 +301,6 @@ export default function TeamPage() {
                 );
                 const name = leftParticipant?.user?.firstname || leftParticipant?.firstname;
                 if (leftParticipant && name) {
-                    console.log('[Call Events] User LEFT:', name);
                     const systemMsg = {
                         type: 'system',
                         content: `👋 ${name} a quitté l'appel`,
@@ -346,7 +322,6 @@ export default function TeamPage() {
     // Also listen to leaveNotification from TeamCallContext
     useEffect(() => {
         if (leaveNotification && activeTeam) {
-            console.log('[Call Events] Leave notification:', leaveNotification.firstname);
             const systemMsg = {
                 type: 'system',
                 content: `👋 ${leaveNotification.firstname} a quitté l'appel`,
@@ -443,7 +418,14 @@ export default function TeamPage() {
                 </div>
 
                 <div className={styles.teamList}>
-                    {filteredTeams.map(team => {
+                    {filteredTeams.sort((a, b) => {
+                        // Sort teams with active calls to the top
+                        const aHasCall = activeTeamCalls[a._id]?.active;
+                        const bHasCall = activeTeamCalls[b._id]?.active;
+                        if (aHasCall && !bHasCall) return -1;
+                        if (!aHasCall && bHasCall) return 1;
+                        return 0;
+                    }).map(team => {
                         const bgColors = ['#2563EB', '#7C3AED', '#DB2777', '#EA580C', '#059669', '#0891B2'];
                         const colorIndex = team._id.charCodeAt(team._id.length - 1) % bgColors.length;
                         const bgColor = bgColors[colorIndex];
@@ -472,6 +454,14 @@ export default function TeamPage() {
                                             )}
                                         </div>
                                     )}
+                                {activeTeamCalls[team._id]?.active && (
+                                    <div className={styles.activeCallBadge}>
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                                            <path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56a.977.977 0 00-1.01.24l-1.57 1.97c-2.83-1.35-5.48-3.9-6.89-6.83l1.95-1.66c.27-.28.35-.67.24-1.02-.37-1.11-.56-2.3-.56-3.53 0-.54-.45-.99-.99-.99H4.19C3.65 3 3 3.24 3 3.99 3 13.28 10.73 21 20.01 21c.71 0 .99-.63.99-1.18v-3.45c0-.54-.45-.99-.99-.99z"/>
+                                        </svg>
+                                        Appel en cours
+                                    </div>
+                                )}
                                 </div>
                                 {teamsWithUnread.has(team._id) && (
                                     <div className={styles.unreadIndicator}></div>

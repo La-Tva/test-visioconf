@@ -509,6 +509,37 @@ io.on('connection', (socket) => {
                     console.error('Get friends error:', e);
                 }
             }
+            
+            // Mark messages as read explicitly
+            else if (message.mark_messages_read) {
+                const { userId, friendId } = message.mark_messages_read;
+                try {
+                    const Message = require('./models/Message');
+                    
+                    // Mark all messages from friendId to userId as read
+                    await Message.updateMany(
+                        { sender: friendId, receiver: userId, read: false },
+                        { $set: { read: true } }
+                    );
+                    
+                    // Send updated friends list with corrected unread counts
+                    const user = await User.findById(userId).populate('friends', 'firstname email is_online disturb_status picture role');
+                    if(user) {
+                        const friendsWithCount = await Promise.all(user.friends.map(async f => {
+                            const count = await Message.countDocuments({ sender: f._id, receiver: userId, read: false });
+                            return { ...f.toObject(), unreadCount: count };
+                        }));
+                        
+                        socket.emit('message', JSON.stringify({
+                            friends: {
+                                friends: friendsWithCount
+                            }
+                        }));
+                    }
+                } catch (e) {
+                    console.error('Mark messages read error:', e);
+                }
+            }
 
             // Get Recent Conversations (Home Page)
             else if (message.get_last_messages) {
@@ -1602,7 +1633,7 @@ io.on('connection', (socket) => {
         console.log('Received demande_liste');
         const listes = {
             emission: ['login_status', 'registration_status', 'users', 'user_updating status', 'user_deleting_status', 'receive_friend_request', 'friend_request_accepted', 'messages', 'friends', 'auth status', 'friend_removed', 'last_messages', 'user_status_changed', 'user_registered', 'user_updated', 'user_deleted', 'team_creating_status', 'teams', 'receive_team_message', 'team_messages', 'leave_team_status', 'team_deleting_status', 'team_updating_status', 'files', 'file_uploading_status', 'file_updating_status', 'file_deleting_status', 'spaces', 'space_creating_status', 'space_deleting_status', 'call-made', 'answer-made', 'ice-candidate', 'call-rejected', 'call-ended', 'active_calls_count', 'user_call_status_changed', 'call-made-group', 'answer-made-group', 'ice-candidate-group', 'team-call-status', 'notify-new-joiner', 'participant-left', 'team-call-ended', 'join-request-received', 'join-request-status', 'participant-left-notification'],
-            abonnement: ['login', 'register', 'get users', 'update user', 'delete_user', 'friend_request', 'friend_response', 'send message', 'get messages', 'get friends', 'authenticate', 'remove_friend', 'get_last_messages', 'create team', 'get teams', 'team_message', 'get_team_messages', 'leave_team', 'delete team', 'add_team_member', 'remove_team_member', 'get_files', 'get file', 'upload_file', 'update file', 'delete_file', 'create_space', 'get_spaces', 'delete_space', 'call-user', 'make-answer', 'ice-candidate', 'reject-call', 'hang-up', 'call-team', 'get_active_calls', 'call-peer-group', 'make-answer-group', 'ice-candidate-group', 'leave-group-call', 'join-request-response']
+            abonnement: ['login', 'register', 'get users', 'update user', 'delete_user', 'friend_request', 'friend_response', 'send message', 'get messages', 'mark_messages_read', 'get friends', 'authenticate', 'remove_friend', 'get_last_messages', 'create team', 'get teams', 'team_message', 'get_team_messages', 'leave_team', 'delete team', 'add_team_member', 'remove_team_member', 'get_files', 'get file', 'upload_file', 'update file', 'delete_file', 'create_space', 'get_spaces', 'delete_space', 'call-user', 'make-answer', 'ice-candidate', 'reject-call', 'hang-up', 'call-team', 'get_active_calls', 'call-peer-group', 'make-answer-group', 'ice-candidate-group', 'leave-group-call', 'join-request-response']
         };
         socket.emit('donne_liste', JSON.stringify(listes));
     });

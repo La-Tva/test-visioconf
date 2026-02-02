@@ -562,8 +562,8 @@ export default function TeamCallOverlay() {
                                     )}
                                 </div>
 
-                                {/* Thumbnails Strip */}
-                                {sideParticipants.length > 0 && (
+                                {/* Thumbnails Strip - Hidden in fullscreen */}
+                                {!isFullscreen && sideParticipants.length > 0 && (
                                     <div style={thumbnailStripStyle}>
                                         {/* Show Local if not hero */}
                                         {!isHeroLocal && (

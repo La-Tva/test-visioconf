@@ -113,6 +113,24 @@ export default function TeamCallOverlay() {
 
     const hasLocalVideo = localStream?.getVideoTracks().some(t => t.enabled);
     
+    // Get current user info
+    const userStr = typeof localStorage !== 'undefined' ? localStorage.getItem('user') : null;
+    const currentUser = userStr ? JSON.parse(userStr) : null;
+    
+    // Helper function to get participant display name
+    const getParticipantName = (socketId, isLocal = false) => {
+        if (isLocal) {
+            const firstName = currentUser?.firstname || 'Vous';
+            const isOwner = currentUser?._id === ownerId;
+            return isOwner ? `${firstName} (hôte)` : firstName;
+        }
+        
+        const participant = activeCall?.participants?.find(p => p.socketId === socketId);
+        const firstName = participant?.user?.firstname || participant?.firstname || 'Participant';
+        const isOwner = participant?.userId === ownerId;
+        return isOwner ? `${firstName} (hôte)` : firstName;
+    };
+    
     // List of "Side" participants (everyone except Hero)
     const sideParticipants = [];
     if (heroSocketId !== 'local') sideParticipants.push('local');
@@ -437,7 +455,7 @@ export default function TeamCallOverlay() {
                                     background: 'rgba(0,0,0,0.6)', color: 'white', 
                                     padding: '2px 8px', borderRadius: '4px', fontSize: '0.75rem' 
                                 }}>
-                                    {isHeroLocal ? 'Vous' : (activeCall?.participants?.find(p => p.socketId === heroSocketId)?.firstname || 'Participant')}
+                                    {getParticipantName(heroSocketId, isHeroLocal)}
                                 </div>
                             </div>
                             
@@ -524,7 +542,7 @@ export default function TeamCallOverlay() {
                                     )}
                                     
                                     <div style={{...nameTagStyle, fontSize: '14px', padding: '6px 12px'}}>
-                                        {isHeroLocal ? <span>Vous {activeCall?.ownerId === localStream?.id ? '(Hôte)' : ''}</span> : 'Participant'} 
+                                        {getParticipantName(heroSocketId, isHeroLocal)} 
                                     </div>
                                     
                                     {/* Unpin Button if pinned */}
@@ -556,7 +574,7 @@ export default function TeamCallOverlay() {
                                                     }}
                                                     autoPlay muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
                                                 />
-                                                <div style={nameTagStyle}>Vous</div>
+                                                <div style={nameTagStyle}>{getParticipantName('local', true)}</div>
                                             </div>
                                         )}
 
@@ -574,7 +592,7 @@ export default function TeamCallOverlay() {
                                                     }}
                                                     autoPlay playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                                 />
-                                                <div style={nameTagStyle}>Participant</div>
+                                                <div style={nameTagStyle}>{getParticipantName(sid, false)}</div>
                                             </div>
                                         ))}
                                     </div>

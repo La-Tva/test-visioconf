@@ -358,6 +358,15 @@ export default function TeamCallOverlay() {
         marginLeft: '16px',
     };
 
+    // --- Mobile Check ---
+    const [isMobileView, setIsMobileView] = useState(false);
+    useEffect(() => {
+        const checkMobile = () => setIsMobileView(window.innerWidth <= 768);
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
+
     // --- Hero Layout Styles ---
     const heroContainerStyle = {
         flex: 1,
@@ -368,29 +377,6 @@ export default function TeamCallOverlay() {
         overflow: 'hidden',
         minHeight: '0',
     };
-
-    const thumbnailStripStyle = {
-        height: '140px',
-        display: 'flex',
-        gap: '12px',
-        padding: '12px 0 0 0',
-        overflowX: 'auto',
-        width: '100%',
-        marginTop: 'auto',
-    };
-    
-    const thumbnailStyle = (isActive) => ({
-        width: '180px',
-        height: '100%',
-        borderRadius: '12px',
-        background: '#1E293B',
-        position: 'relative',
-        overflow: 'hidden',
-        flexShrink: 0,
-        cursor: 'pointer',
-        border: isActive ? '3px solid #3B82F6' : '2px solid transparent',
-        transition: 'all 0.2s',
-    });
 
     // --- Render ---
     return (
@@ -405,7 +391,10 @@ export default function TeamCallOverlay() {
 
                 {/* Removed leave notification toast */}
 
-                <motion.div ref={overlayRef} layout style={panelStyle}>
+                <motion.div ref={overlayRef} layout style={{
+                    ...panelStyle, 
+                    ...(isMobileView ? { width: '100%', height: '100%', borderRadius: 0, border: 'none' } : {})
+                }}>
                     {isMinimized ? (
                         // --- Minimized View ("Entre deux") ---
                         <>
@@ -469,16 +458,18 @@ export default function TeamCallOverlay() {
                     ) : (
                         // --- Maximized View ---
                         <>
-                            {/* Header */}
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', borderBottom: '1px solid #F1F5F9' }}>
-                                <div>
-                                    <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600, color: '#0F172A' }}>Appel d'équipe</h3>
-                                    <span style={{ fontSize: '0.85rem', color: '#64748B' }}>{participantCount} participant{participantCount > 1 ? 's' : ''}</span>
+                            {/* Header (Hidden in Fullscreen Mobile to save space?) No keep it for exit */}
+                            {!isFullscreen && (
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: isMobileView ? '12px 16px' : '16px 24px', borderBottom: '1px solid #F1F5F9' }}>
+                                    <div>
+                                        <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600, color: '#0F172A' }}>Appel d'équipe</h3>
+                                        <span style={{ fontSize: '0.85rem', color: '#64748B' }}>{participantCount} participant{participantCount > 1 ? 's' : ''}</span>
+                                    </div>
+                                    <button onClick={() => setIsMinimized(true)} style={{ background: 'transparent', border: 'none', color: '#94A3B8', cursor: 'pointer' }}>
+                                        <IconMinimize />
+                                    </button>
                                 </div>
-                                <button onClick={() => setIsMinimized(true)} style={{ background: 'transparent', border: 'none', color: '#94A3B8', cursor: 'pointer' }}>
-                                    <IconMinimize />
-                                </button>
-                            </div>
+                            )}
 
                             {/* Pending Join Requests (Host Only) */}
                             {pendingJoinRequests && pendingJoinRequests.length > 0 && (
@@ -502,7 +493,7 @@ export default function TeamCallOverlay() {
                             )}
 
                             {/* Main Content */}
-                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: isFullscreen ? '0' : '0 16px', gap: '8px', minHeight: 0, justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
+                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: isFullscreen ? '0' : (isMobileView ? '8px' : '0 16px'), gap: '8px', minHeight: 0, justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
                                 
                                 {isFullscreen ? (
                                     /* FULLSCREEN: Single Focused View */
@@ -542,29 +533,27 @@ export default function TeamCallOverlay() {
                                         </div>
                                     </div>
                                 ) : (
-                                    /* NORMAL VIEW: Dynamic Grid (All Participants) */
+                                    /* NORMAL VIEW: Dynamic Grid */
                                     <div style={{
                                         display: 'grid',
-                                        gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+                                        // Mobile: 1 col. Desktop: Auto fit but prefer bigger host.
+                                        gridTemplateColumns: isMobileView ? '1fr' : 'repeat(auto-fit, minmax(300px, 1fr))',
+                                        gridAutoFlow: 'dense', // Helps pack the bigger host tile
                                         gap: '8px',
                                         width: '100%',
                                         height: '100%',
-                                        padding: '8px 8px 100px 8px', // Bottom padding for floating controls
+                                        padding: isMobileView ? '0 0 80px 0' : '8px 8px 100px 8px',
                                         overflowY: 'auto',
-                                        alignContent: 'center',
+                                        alignContent: isMobileView ? 'start' : 'center',
                                         justifyContent: 'center' 
                                     }}>
                                         {/* Local Video Tile */}
                                         <div 
                                             style={{
-                                                position: 'relative',
-                                                background: '#0F172A',
-                                                borderRadius: '12px',
-                                                overflow: 'hidden',
-                                                aspectRatio: '16/9',
-                                                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.2)',
-                                                border: pinnedSocketId === 'local' ? '3px solid #3B82F6' : '1px solid rgba(255,255,255,0.05)',
-                                                cursor: 'pointer'
+                                                ...tileStyle,
+                                                gridColumn: (!isMobileView && currentUser?._id === ownerId) ? 'span 2' : 'span 1',
+                                                gridRow: (!isMobileView && currentUser?._id === ownerId) ? 'span 2' : 'span 1',
+                                                border: pinnedSocketId === 'local' ? '3px solid #3B82F6' : (currentUser?._id === ownerId ? '2px solid #8B5CF6' : '1px solid rgba(255,255,255,0.05)'),
                                             }}
                                             onClick={() => setPinnedSocketId(pinnedSocketId === 'local' ? null : 'local')}
                                         >
@@ -576,31 +565,24 @@ export default function TeamCallOverlay() {
                                                 autoPlay muted playsInline 
                                                 style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
                                             />
-                                            <div style={{
-                                                position: 'absolute', 
-                                                bottom: '12px', left: '12px',
-                                                background: 'rgba(0,0,0,0.7)', color: 'white',
-                                                padding: '4px 10px', borderRadius: '6px', 
-                                                fontSize: '0.85rem', fontWeight: 600,
-                                                backdropFilter: 'blur(4px)'
-                                            }}>
+                                            <div style={nameTagStyle}>
                                                 {getParticipantName('local', true)} (Vous)
                                             </div>
                                         </div>
 
                                         {/* Remote Video Tiles */}
-                                        {Object.keys(remoteStreams).map(sid => (
+                                        {Object.keys(remoteStreams).map(sid => {
+                                             // Check if this remote participant is owner
+                                             const isRemoteOwner = getParticipantName(sid, false).includes('(hôte)');
+                                             
+                                             return (
                                             <div 
                                                 key={sid} 
                                                 style={{
-                                                    position: 'relative',
-                                                    background: '#0F172A',
-                                                    borderRadius: '12px',
-                                                    overflow: 'hidden',
-                                                    aspectRatio: '16/9',
-                                                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.2)',
-                                                    border: pinnedSocketId === sid ? '3px solid #3B82F6' : '1px solid rgba(255,255,255,0.05)',
-                                                    cursor: 'pointer'
+                                                    ...tileStyle,
+                                                    gridColumn: (!isMobileView && isRemoteOwner) ? 'span 2' : 'span 1',
+                                                    gridRow: (!isMobileView && isRemoteOwner) ? 'span 2' : 'span 1',
+                                                    border: pinnedSocketId === sid ? '3px solid #3B82F6' : (isRemoteOwner ? '2px solid #8B5CF6' : '1px solid rgba(255,255,255,0.05)'),
                                                 }}
                                                 onClick={() => setPinnedSocketId(pinnedSocketId === sid ? null : sid)}
                                             >
@@ -616,18 +598,11 @@ export default function TeamCallOverlay() {
                                                     autoPlay playsInline 
                                                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                                 />
-                                                <div style={{
-                                                    position: 'absolute', 
-                                                    bottom: '12px', left: '12px',
-                                                    background: 'rgba(0,0,0,0.7)', color: 'white',
-                                                    padding: '4px 10px', borderRadius: '6px', 
-                                                    fontSize: '0.85rem', fontWeight: 600,
-                                                    backdropFilter: 'blur(4px)'
-                                                }}>
+                                                <div style={nameTagStyle}>
                                                     {getParticipantName(sid, false)}
                                                 </div>
                                             </div>
-                                        ))}
+                                        )})}
                                     </div>
                                 )}
                             </div>
@@ -658,7 +633,20 @@ export default function TeamCallOverlay() {
                                 <button onClick={leaveTeamCall} title="Quitter" style={{...hangupButtonStyle, borderRadius: '50%', width: '56px', height: '56px'}}>
                                     <IconHangup />
                                 </button>
-                                <button onClick={toggleFullscreen} title="Plein écran" style={{...buttonStyle(false), background: '#1E293B', color: 'white', borderRadius: '50%', width: '56px', height: '56px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                                <button onClick={async () => {
+                                     // Robust Fullscreen Toggle
+                                     if (!isFullscreen) {
+                                        try {
+                                             await overlayRef.current?.requestFullscreen();
+                                        } catch(e) { console.warn("FS API fail", e); }
+                                        setIsFullscreen(true);
+                                     } else {
+                                        try {
+                                             await document.exitFullscreen();
+                                        } catch(e) {}
+                                        setIsFullscreen(false);
+                                     }
+                                }} title="Plein écran" style={{...buttonStyle(false), background: '#1E293B', color: 'white', borderRadius: '50%', width: '56px', height: '56px', border: '1px solid rgba(255,255,255,0.1)' }}>
                                     {isFullscreen ? <IconFullscreenExit /> : <IconFullscreen />}
                                 </button>
                             </div>

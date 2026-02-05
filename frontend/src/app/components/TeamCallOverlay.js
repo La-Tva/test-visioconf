@@ -492,117 +492,144 @@ export default function TeamCallOverlay() {
                                 </div>
                             )}
 
-                            {/* Main Content */}
-                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: isFullscreen ? '0' : (isMobileView ? '8px' : '0 16px'), gap: '8px', minHeight: 0, justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
+                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: isFullscreen ? '0' : (isMobileView ? '0' : '0 16px'), gap: '8px', minHeight: 0, justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
                                 
-                                {isFullscreen ? (
-                                    /* FULLSCREEN: Single Focused View */
-                                    <div style={{
-                                        width: '100%',
-                                        height: '100%',
-                                        background: '#000',
-                                        position: 'relative',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center'
-                                    }}>
-                                        {isHeroLocal ? (
-                                             <video 
-                                                ref={el => {
-                                                    if(el && localStream && el.srcObject !== localStream) el.srcObject = localStream;
-                                                    localVideoRef.current = el;
-                                                }} 
-                                                autoPlay muted playsInline style={{ width: '100%', height: '100%', objectFit: 'contain' }} 
-                                            />
-                                        ) : (
-                                             <video
-                                                ref={el => {
-                                                    if (el) {
-                                                        remoteVideoRefs.current[heroSocketId] = el;
-                                                        if (remoteStreams[heroSocketId] && el.srcObject !== remoteStreams[heroSocketId]) {
-                                                            el.srcObject = remoteStreams[heroSocketId];
-                                                        }
-                                                    }
-                                                }}
-                                                autoPlay playsInline style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                                            />
-                                        )}
+                                {isMobileView ? (
+                                    /* --- MOBILE VIEW (Simplified: Host Video + Avatars) --- */
+                                    <div style={{ display: 'flex', flexDirection: 'column', height: '100%',  background: '#0F172A' }}>
                                         
+                                        {/* 1. HOST VIDEO AREA (Takes most space) */}
+                                        <div style={{ flex: 1, position: 'relative', overflow:'hidden', borderRadius: isFullscreen ? 0 : '0 0 16px 16px' }}>
+                                            {/* Logic to find Host Video */}
+                                            {(() => {
+                                                // Find Host Socket ID - Re-using logic from top but being explicit
+                                                // If we are owner, localStream is host. If remote is owner, remoteStream is host.
+                                                let hostVidStream = null;
+                                                let isLocalHost = currentUser?._id === ownerId;
+                                                
+                                                if (isLocalHost) {
+                                                    hostVidStream = localStream;
+                                                } else if (ownerSocketId && remoteStreams[ownerSocketId]) {
+                                                    hostVidStream = remoteStreams[ownerSocketId];
+                                                }
+
+                                                // Fallback: If no host video is found (e.g. host waiting), maybe show placeholder or Active Speaker?
+                                                // Prompt says "on voit que la cam de l'hôte".
+                                                
+                                                if (hostVidStream) {
+                                                    return (
+                                                        <video 
+                                                            ref={el => {
+                                                                if(el && el.srcObject !== hostVidStream) el.srcObject = hostVidStream;
+                                                                // Handle refs appropriately if needed, but for display this is enough
+                                                            }} 
+                                                            autoPlay 
+                                                            muted={isLocalHost} // Mute if it's us 
+                                                            playsInline 
+                                                            style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                                                        />
+                                                    );
+                                                } else {
+                                                    // Host not sending video or not connected? Show Avatar
+                                                    return (
+                                                        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#1E293B', color: 'white', flexDirection: 'column' }}>
+                                                            <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: '#3B82F6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', fontWeight: 'bold', marginBottom: '16px' }}>
+                                                                {activeCall?.owner?.firstname?.charAt(0).toUpperCase() || 'H'}
+                                                            </div>
+                                                            <span>L'hôte n'a pas activé sa caméra</span>
+                                                        </div>
+                                                    );
+                                                }
+                                            })()}
+                                            
+                                            <div style={{ position: 'absolute', bottom: '16px', left:'16px', background:'rgba(0,0,0,0.6)', color:'white', padding:'4px 12px', borderRadius:'6px', fontSize:'14px' }}>
+                                                Hôte
+                                            </div>
+                                        </div>
+
+                                        {/* 2. PARTICIPANTS STRIP (Bottom, Avatars Only) */}
+                                        <div style={{ height: '80px', background: '#1E293B', display: 'flex', alignItems: 'center', padding: '0 16px', gap: '12px', overflowX: 'auto' }}>
+                                            {/* Me (if not host) */}
+                                            {currentUser?._id !== ownerId && (
+                                                <div style={{ minWidth: '50px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                                    <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#334155', border: '2px solid #3B82F6', display:'flex', alignItems:'center', justifyContent:'center', overflow:'hidden' }}>
+                                                        <span style={{color:'white', fontWeight:'600'}}>Moi</span>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* Others (Host excluded) */}
+                                            {(() => {
+                                                const others = activeCall?.participants?.filter(p => p.userId !== ownerId && p.userId !== currentUser?._id) || [];
+                                                const maxDisplay = 9;
+                                                const displayOthers = others.slice(0, maxDisplay);
+                                                const overflow = others.length - maxDisplay;
+
+                                                return (
+                                                    <>
+                                                        {displayOthers.map(p => (
+                                                            <div key={p.socketId} style={{ minWidth: '50px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                                                <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#475569', display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontWeight:'600' , overflow:'hidden' }}>
+                                                                    {p.user?.picture && !p.user.picture.includes('default') ? (
+                                                                         <img src={`http://localhost:3001/${p.user.picture}`} style={{width:'100%', height:'100%', objectFit:'cover'}} />
+                                                                    ) : (
+                                                                         p.user?.firstname?.charAt(0) || p.firstname?.charAt(0) || '?'
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                        {overflow > 0 && (
+                                                            <div style={{ minWidth: '50px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                                                <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#64748B', display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontWeight:'bold' }}>
+                                                                    +{overflow}
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </>
+                                                );
+                                            })()}
+                                        </div>
+                                        <div style={{height: '100px'}}></div> {/* Spacer for controls */}
+                                    </div>
+                                ) : isFullscreen ? (
+                                    /* --- DESKTOP FULLSCREEN (Single Focused View) --- */
+                                    <div style={{ width: '100%', height: '100%', background: '#000', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        {isHeroLocal ? (
+                                             <video ref={el => { if(el && localStream && el.srcObject !== localStream) el.srcObject = localStream; localVideoRef.current = el; }} autoPlay muted playsInline style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                                        ) : (
+                                             <video ref={el => { if (el) { remoteVideoRefs.current[heroSocketId] = el; if (remoteStreams[heroSocketId] && el.srcObject !== remoteStreams[heroSocketId]) el.srcObject = remoteStreams[heroSocketId]; } }} autoPlay playsInline style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                                        )}
                                         <div style={{...nameTagStyle, fontSize: '14px', padding: '6px 12px'}}>
                                             {getParticipantName(heroSocketId, isHeroLocal)} 
                                         </div>
                                     </div>
                                 ) : (
-                                    /* NORMAL VIEW: Dynamic Grid */
+                                    /* --- DESKTOP VIEW (Reverted Grid - Uniform) --- */
                                     <div style={{
                                         display: 'grid',
-                                        // Mobile: 1 col. Desktop: Auto fit but prefer bigger host.
-                                        gridTemplateColumns: isMobileView ? '1fr' : 'repeat(auto-fit, minmax(300px, 1fr))',
-                                        gridAutoFlow: 'dense', // Helps pack the bigger host tile
-                                        gap: '8px',
+                                        gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', // Standard Grid
+                                        gridAutoFlow: 'dense',
+                                        gap: '12px', // Slightly larger gap
                                         width: '100%',
                                         height: '100%',
-                                        padding: isMobileView ? '0 0 80px 0' : '8px 8px 100px 8px',
+                                        padding: '16px 16px 100px 16px',
                                         overflowY: 'auto',
-                                        alignContent: isMobileView ? 'start' : 'center',
+                                        alignContent: 'center', // Center vertically if few items
                                         justifyContent: 'center' 
                                     }}>
                                         {/* Local Video Tile */}
-                                        <div 
-                                            style={{
-                                                ...tileStyle,
-                                                gridColumn: (!isMobileView && currentUser?._id === ownerId) ? 'span 2' : 'span 1',
-                                                gridRow: (!isMobileView && currentUser?._id === ownerId) ? 'span 2' : 'span 1',
-                                                border: pinnedSocketId === 'local' ? '3px solid #3B82F6' : (currentUser?._id === ownerId ? '2px solid #8B5CF6' : '1px solid rgba(255,255,255,0.05)'),
-                                            }}
-                                            onClick={() => setPinnedSocketId(pinnedSocketId === 'local' ? null : 'local')}
-                                        >
-                                            <video 
-                                                ref={el => {
-                                                    if(el && localStream && el.srcObject !== localStream) el.srcObject = localStream;
-                                                    localVideoRef.current = el;
-                                                }} 
-                                                autoPlay muted playsInline 
-                                                style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                                            />
-                                            <div style={nameTagStyle}>
-                                                {getParticipantName('local', true)} (Vous)
-                                            </div>
+                                        <div style={{ ...tileStyle, border: pinnedSocketId === 'local' ? '3px solid #3B82F6' : '1px solid rgba(255,255,255,0.1)' }} onClick={() => setPinnedSocketId(pinnedSocketId === 'local' ? null : 'local')}>
+                                            <video ref={el => { if(el && localStream && el.srcObject !== localStream) el.srcObject = localStream; localVideoRef.current = el; }} autoPlay muted playsInline style={videoStyle} />
+                                            <div style={nameTagStyle}>{getParticipantName('local', true)} (Vous)</div>
                                         </div>
 
                                         {/* Remote Video Tiles */}
-                                        {Object.keys(remoteStreams).map(sid => {
-                                             // Check if this remote participant is owner
-                                             const isRemoteOwner = getParticipantName(sid, false).includes('(hôte)');
-                                             
-                                             return (
-                                            <div 
-                                                key={sid} 
-                                                style={{
-                                                    ...tileStyle,
-                                                    gridColumn: (!isMobileView && isRemoteOwner) ? 'span 2' : 'span 1',
-                                                    gridRow: (!isMobileView && isRemoteOwner) ? 'span 2' : 'span 1',
-                                                    border: pinnedSocketId === sid ? '3px solid #3B82F6' : (isRemoteOwner ? '2px solid #8B5CF6' : '1px solid rgba(255,255,255,0.05)'),
-                                                }}
-                                                onClick={() => setPinnedSocketId(pinnedSocketId === sid ? null : sid)}
-                                            >
-                                                <video
-                                                    ref={el => {
-                                                        if (el) {
-                                                            remoteVideoRefs.current[sid] = el;
-                                                            if (remoteStreams[sid] && el.srcObject !== remoteStreams[sid]) {
-                                                                el.srcObject = remoteStreams[sid];
-                                                            }
-                                                        }
-                                                    }}
-                                                    autoPlay playsInline 
-                                                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                                />
-                                                <div style={nameTagStyle}>
-                                                    {getParticipantName(sid, false)}
-                                                </div>
+                                        {Object.keys(remoteStreams).map(sid => (
+                                            <div key={sid} style={{ ...tileStyle, border: pinnedSocketId === sid ? '3px solid #3B82F6' : '1px solid rgba(255,255,255,0.1)' }} onClick={() => setPinnedSocketId(pinnedSocketId === sid ? null : sid)}>
+                                                <video ref={el => { if (el) { remoteVideoRefs.current[sid] = el; if (remoteStreams[sid] && el.srcObject !== remoteStreams[sid]) el.srcObject = remoteStreams[sid]; } }} autoPlay playsInline style={videoStyle} />
+                                                <div style={nameTagStyle}>{getParticipantName(sid, false)}</div>
                                             </div>
-                                        )})}
+                                        ))}
                                     </div>
                                 )}
                             </div>

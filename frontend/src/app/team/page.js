@@ -158,7 +158,7 @@ export default function TeamPage() {
         return () => {
              controleur.desincription(teamComp, 
                 ['get teams', 'create team', 'get_team_messages', 'team_message', 'leave_team', 'delete team', 'add_team_member', 'remove_team_member'], 
-                ['teams', 'team_creating_status', 'get_team_messages_response', 'receive_team_message', 'leave_team_status', 'team_deleting_status', 'team_updating_status']
+                ['teams', 'team_creating_status', 'team_messages', 'receive_team_message', 'leave_team_status', 'team_deleting_status', 'team_updating_status']
             );
         };
     }, [controleur, isReady, currentUser]);

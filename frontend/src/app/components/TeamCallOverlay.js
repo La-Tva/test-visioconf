@@ -27,6 +27,15 @@ export default function TeamCallOverlay() {
     const [pinnedSocketId, setPinnedSocketId] = useState(null); // SocketID of pinned user
     const [isFullscreen, setIsFullscreen] = useState(false);
     
+    // Mobile Check (Moved to top to avoid conditional hook error)
+    const [isMobileView, setIsMobileView] = useState(false);
+    useEffect(() => {
+        const checkMobile = () => setIsMobileView(window.innerWidth <= 768);
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
+
     const localVideoRef = useRef(null);
     const remoteVideoRefs = useRef({});
     const overlayRef = useRef(null); // Ref for fullscreen container
@@ -357,15 +366,6 @@ export default function TeamCallOverlay() {
         cursor: 'pointer',
         marginLeft: '16px',
     };
-
-    // --- Mobile Check ---
-    const [isMobileView, setIsMobileView] = useState(false);
-    useEffect(() => {
-        const checkMobile = () => setIsMobileView(window.innerWidth <= 768);
-        checkMobile();
-        window.addEventListener('resize', checkMobile);
-        return () => window.removeEventListener('resize', checkMobile);
-    }, []);
 
     // --- Hero Layout Styles ---
     const heroContainerStyle = {

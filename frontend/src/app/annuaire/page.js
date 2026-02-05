@@ -178,8 +178,17 @@ export default function DirectoryPage() {
                                                     controleur.envoie(directoryCompRef.current, {
                                                         friend_request: { fromUserId: currentUser._id, toUserId: u._id }
                                                     });
-                                                    alert('Demande envoyée !'); 
-                                                    // Optimistic update could go here, but waiting for server refresh via socket is safer/standard
+                                                    
+                                                    // Optimistic Update: Add current user to target's friendRequests
+                                                    setUsers(prev => prev.map(usr => {
+                                                        if (usr._id === u._id) {
+                                                            return { 
+                                                                ...usr, 
+                                                                friendRequests: [...(usr.friendRequests || []), currentUser._id] 
+                                                            };
+                                                        }
+                                                        return usr;
+                                                    }));
                                                 }
                                             }
                                         }}

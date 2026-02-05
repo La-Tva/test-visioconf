@@ -152,29 +152,42 @@ export default function DirectoryPage() {
                         </div>
 
                         <div className={styles.actions}>
-                            <button 
-                                className={styles.contactBtn}
-                                disabled={currentUser && currentUser._id === u._id}
-                                style={currentUser && currentUser._id === u._id ? { backgroundColor: '#CBD5E1', color: 'white' } : (isFriend ? { backgroundColor: '#FF4D4D', color: 'white' } : {})}
-                                onClick={() => {
-                                    if(controleur && directoryCompRef.current) {
-                                        if (isFriend) {
-                                            if(confirm('Retirer cet ami ?')) {
-                                                controleur.envoie(directoryCompRef.current, {
-                                                    remove_friend: { userId: currentUser._id, friendId: u._id }
-                                                });
-                                            }
-                                        } else {
-                                            controleur.envoie(directoryCompRef.current, {
-                                                friend_request: { fromUserId: currentUser._id, toUserId: u._id }
-                                            });
-                                            alert('Demande envoyée !'); 
+                            {(() => {
+                                const isFriend = users.find(me => me._id === currentUser?._id)?.friends?.includes(u._id);
+                                const isPending = u.friendRequests && currentUser && u.friendRequests.includes(currentUser._id);
+                                const isMe = currentUser && currentUser._id === u._id;
+
+                                return (
+                                    <button 
+                                        className={styles.contactBtn}
+                                        disabled={isMe || isPending}
+                                        style={
+                                            isMe ? { backgroundColor: '#CBD5E1', color: 'white' } : 
+                                            (isPending ? { backgroundColor: '#F59E0B', color: 'white', cursor: 'default' } :
+                                            (isFriend ? { backgroundColor: '#FF4D4D', color: 'white' } : {}))
                                         }
-                                    }
-                                }}
-                            >
-                                {currentUser && currentUser._id === u._id ? 'Vous' : (isFriend ? "Retirer l'ami" : 'Contacter')}
-                            </button>
+                                        onClick={() => {
+                                            if(controleur && directoryCompRef.current) {
+                                                if (isFriend) {
+                                                    if(confirm('Retirer cet ami ?')) {
+                                                        controleur.envoie(directoryCompRef.current, {
+                                                            remove_friend: { userId: currentUser._id, friendId: u._id }
+                                                        });
+                                                    }
+                                                } else if (!isPending) {
+                                                    controleur.envoie(directoryCompRef.current, {
+                                                        friend_request: { fromUserId: currentUser._id, toUserId: u._id }
+                                                    });
+                                                    alert('Demande envoyée !'); 
+                                                    // Optimistic update could go here, but waiting for server refresh via socket is safer/standard
+                                                }
+                                            }
+                                        }}
+                                    >
+                                        {isMe ? 'Vous' : (isPending ? 'En attente' : (isFriend ? "Retirer l'ami" : 'Ajouter'))}
+                                    </button>
+                                );
+                            })()}
                         </div>
                     </div>
                     );

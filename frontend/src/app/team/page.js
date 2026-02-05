@@ -564,6 +564,12 @@ export default function TeamPage() {
                                                         )}
                                                         <div className={styles.messageBubble}>
                                                             {msg.content}
+                                                            <div style={{ fontSize: '0.7rem', opacity: 0.7, marginTop: '4px', textAlign: 'right', minWidth: '40px' }}>
+                                                                {(() => {
+                                                                    const date = new Date(msg.createdAt || msg.timestamp || Date.now());
+                                                                    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                                                                })()}
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 );

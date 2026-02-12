@@ -1,12 +1,7 @@
-import Sidebar from '../components/Sidebar';
+"use client";
+import React from 'react';
+import InternalLayout from '../components/InternalLayout';
 
 export default function InfoLayout({ children }) {
-  return (
-    <div style={{ display: 'flex', width: '100%', minHeight: '100vh', background: '#F8FAFC' }}>
-      <Sidebar />
-      <div style={{ flex: 1, overflowY: 'auto' }}>
-        {children}
-      </div>
-    </div>
-  );
+  return <InternalLayout>{children}</InternalLayout>;
 }

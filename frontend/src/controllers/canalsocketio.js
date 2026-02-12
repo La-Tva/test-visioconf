@@ -14,7 +14,7 @@ class CanalSocketio {
         this.nomDInstance = nom
 
         this.socket = io(
-            process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:3001",
+            process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:4000",
             {
                 autoConnect: true,
                 reconnection: true,

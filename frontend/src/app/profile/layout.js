@@ -1,7 +1,5 @@
-"use client";
-import React from 'react';
 import InternalLayout from '../components/InternalLayout';
 
-export default function TeamLayout({ children }) {
+export default function ProfileLayout({ children }) {
   return <InternalLayout>{children}</InternalLayout>;
 }

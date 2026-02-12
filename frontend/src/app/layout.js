@@ -9,6 +9,7 @@ import { TeamCallProvider } from "./context/TeamCallContext";
 import { SoundProvider } from "./context/SoundContext";
 import CallOverlay from "./components/CallOverlay";
 import TeamCallOverlay from "./components/TeamCallOverlay";
+import SWRProvider from "./components/SWRProvider";
 
 const bricolage = Bricolage_Grotesque({
   variable: "--font-bricolage",
@@ -38,21 +39,23 @@ export default function RootLayout({ children }) {
   return (
     <html lang="fr" suppressHydrationWarning>
       <body className={`${bricolage.variable} ${jakarta.variable}`}>
-        <SocketProvider>
-            <SoundProvider>
-                <PreloadProvider>
-                    <CallProvider>
-                        <TeamCallProvider>
-                            <CallOverlay />
-                            <TeamCallOverlay />
-                            <GlobalRequestHandler />
-                            <GlobalComponents />
-                            {children}
-                        </TeamCallProvider>
-                    </CallProvider>
-                </PreloadProvider>
-            </SoundProvider>
-        </SocketProvider>
+        <SWRProvider>
+          <SocketProvider>
+              <SoundProvider>
+                  <PreloadProvider>
+                      <CallProvider>
+                          <TeamCallProvider>
+                              <CallOverlay />
+                              <TeamCallOverlay />
+                              <GlobalRequestHandler />
+                              <GlobalComponents />
+                              {children}
+                          </TeamCallProvider>
+                      </CallProvider>
+                  </PreloadProvider>
+              </SoundProvider>
+          </SocketProvider>
+        </SWRProvider>
       </body>
     </html>
   );

@@ -4,6 +4,7 @@ const teamSchema = new mongoose.Schema({
     name: { type: String, required: true },
     owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     members: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+    avatar: { type: String }, // Team profile picture/icon
     unreadCounts: { type: Map, of: Number, default: {} } // Map userId -> count
 }, {
     timestamps: true

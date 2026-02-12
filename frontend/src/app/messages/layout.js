@@ -1,14 +1,7 @@
 "use client";
 import React from 'react';
-import Sidebar from '../components/Sidebar';
+import InternalLayout from '../components/InternalLayout';
 
 export default function DirectoryLayout({ children }) {
-  return (
-    <div className="responsive-layout">
-      <Sidebar />
-      <div className="page-content">
-        {children}
-      </div>
-    </div>
-  );
+  return <InternalLayout>{children}</InternalLayout>;
 }

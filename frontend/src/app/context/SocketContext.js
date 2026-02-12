@@ -27,17 +27,24 @@ export function SocketProvider({ children }) {
         };
     }, []);
 
+    const systemCompRef = useRef(null);
+    const lastIdentifiedIdRef = useRef(null);
+
     const identifyUser = (userId) => {
         if (controleur && isReady) {
-             const systemComp = { 
-                 nomDInstance: "SystemAuth", 
-                 traitementMessage: () => {} 
-             };
-             // Register SystemAuth to emit 'authenticate'
-             controleur.inscription(systemComp, ['authenticate'], []);
+            if (lastIdentifiedIdRef.current === userId) return;
+            
+            if (!systemCompRef.current) {
+                systemCompRef.current = { 
+                    nomDInstance: "SystemAuth", 
+                    traitementMessage: () => {} 
+                };
+                controleur.inscription(systemCompRef.current, ['authenticate'], []);
+            }
              
              // Envoie
-             controleur.envoie(systemComp, { authenticate: { _id: userId } });
+             controleur.envoie(systemCompRef.current, { authenticate: { _id: userId } });
+             lastIdentifiedIdRef.current = userId;
         }
     };
 

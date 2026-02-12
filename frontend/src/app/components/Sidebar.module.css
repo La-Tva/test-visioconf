@@ -12,7 +12,33 @@
     transition: width 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
     flex-shrink: 0;
     z-index: 50;
-    overflow: hidden;
+    overflow: visible;
+    /* Changed from hidden to allow the floating toggle to be visible */
+}
+
+@media (max-width: 768px) {
+    .sidebar {
+        display: none;
+        /* Persistent sidebar hidden on mobile, replaced by BottomNav */
+    }
+}
+
+.mobileHeader {
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: white;
+    border-bottom: 1px solid #F1F5F9;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.mobileLogo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
 
 .expanded {
@@ -29,31 +55,94 @@
     margin-bottom: 40px;
     display: flex;
     align-items: center;
+    justify-content: space-between;
     min-height: 48px;
     padding-left: 4px;
     overflow: hidden;
 }
 
-.logoContainer {
+.header {
+    margin-bottom: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 48px;
+    padding-left: 4px;
+    overflow: hidden;
+}
+
+.toggleBtn {
+    position: absolute;
+    right: -14px;
+    top: 32px;
+    width: 28px;
+    height: 28px;
+    background: #FFFFFF;
+    border: 1px solid #F1F5F9;
+    color: #64748B;
+    cursor: pointer;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    z-index: 60;
+}
+
+.toggleBtn:hover {
+    background-color: #F8FAFC;
+    color: #1E3664;
+    transform: scale(1.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.collapsedToggle {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    /* Fix empty ruleset */
+}
+
+/* Collapsed mode adjustments */
+.collapsed .header {
+    justify-content: center;
+    padding-left: 0;
+}
+
+.collapsed .logoWrapper {
+    width: 100%;
+    justify-content: center;
+    display: flex;
+}
+
+.logoWrapper {
     display: flex;
     align-items: center;
     gap: 14px;
     white-space: nowrap;
+    cursor: pointer;
+    min-width: 0;
+}
+
+.logoLink {
+    display: flex;
+    align-items: center;
+    gap: 14px;
     text-decoration: none;
+    color: inherit;
+    min-width: 0;
 }
 
 .logoIcon {
     width: 36px;
-    /* Larger logo */
     height: 36px;
     flex-shrink: 0;
     transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-.sidebar:hover .logoIcon {
-    transform: rotate(10deg) scale(1.05);
-    /* Playful interaction */
+.collapsed .logoIcon {
+    margin: 0 auto;
 }
+
 
 .logoText {
     font-size: 1.25rem;
@@ -65,7 +154,6 @@
     opacity: 0;
     transition: opacity 0.2s ease;
     font-family: 'Inter', sans-serif;
-    /* Enforce premium font */
     letter-spacing: -0.03em;
 }
 
@@ -74,13 +162,18 @@
     transition: opacity 0.4s ease 0.1s;
 }
 
+.collapsed .logoText {
+    display: none;
+}
+
 /* Nav */
 .nav {
     display: flex;
     flex-direction: column;
     gap: 6px;
-    /* Tighter gap */
     flex: 1;
+    overflow: hidden;
+    /* Keep content clipped during transitions */
 }
 
 .navItem {
@@ -208,6 +301,29 @@
     border-top: 1px solid #F1F5F9;
     padding-top: 16px;
     overflow: hidden;
+    /* Keep content clipped during transitions */
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.logoutBtn {
+    background: none;
+    border: none;
+    color: #94A3B8;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.logoutBtn:hover {
+    background-color: #FEF2F2;
+    color: #EF4444;
 }
 
 .profileContainer {

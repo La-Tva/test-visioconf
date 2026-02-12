@@ -218,15 +218,12 @@ export default function MessagesPage() {
                                 <div className={styles.friendName}>
                                     {friend.firstname}
                                     {friend.role && friend.role !== 'etudiant' && (
-                                        <span className={styles.roleBadge} style={{
-                                            background: friend.role === 'admin' ? '#DCFCE7' : '#F3E8FF',
-                                            color: friend.role === 'admin' ? '#166534' : '#7E22CE',
-                                        }}>
+                                        <span className={`${styles.roleBadge} ${friend.role === 'admin' ? styles.roleAdmin : (friend.role === 'enseignant' ? styles.roleTeacher : styles.roleStudent)}`}>
                                             {friend.role}
                                         </span>
                                     )}
                                 </div>
-                                 <div className={styles.friendStatus} style={{color: friend.isInCall ? '#EF4444' : (friend.is_online ? '#22C55E' : '#94A3B8')}}>
+                                 <div className={`${styles.friendStatus} ${friend.isInCall ? styles.statusBusy : (friend.is_online ? styles.statusOnline : styles.statusOffline)}`}>
                                     {friend.isInCall ? '• En appel' : (friend.is_online ? '• En ligne' : '• Hors ligne')}
                                 </div>
                             </div>
@@ -267,37 +264,17 @@ export default function MessagesPage() {
                                             className={styles.headerAvatar}
                                         />
                                         {selectedFriend.firstname}
-                                        <span className={styles.roleBadge} style={{
-                                            background: selectedFriend.role === 'admin' ? '#DCFCE7' : (selectedFriend.role === 'enseignant' ? '#F3E8FF' : '#DBEAFE'),
-                                            color: selectedFriend.role === 'admin' ? '#166534' : (selectedFriend.role === 'enseignant' ? '#7E22CE' : '#1E40AF'),
-                                        }}>
+                                        <span className={`${styles.roleBadge} ${selectedFriend.role === 'admin' ? styles.roleAdmin : (selectedFriend.role === 'enseignant' ? styles.roleTeacher : styles.roleStudent)}`}>
                                             {selectedFriend.role || 'Étudiant'}
                                         </span>
                                     </div>
 
-                                    {/* Call Button SVG */}
                                     {/* Call Button (Updated) */}
                                     <button 
                                         onClick={handleStartCall}
                                         title={selectedFriend.isInCall ? "L'utilisateur est déjà en ligne" : (selectedFriend.is_online ? "Démarrer un appel vocal" : "Utilisateur hors ligne")}
                                         disabled={!selectedFriend.is_online || selectedFriend.isInCall}
-                                        style={{ 
-                                            opacity: (selectedFriend.is_online && !selectedFriend.isInCall) ? 1 : 0.5, 
-                                            cursor: (selectedFriend.is_online && !selectedFriend.isInCall) ? 'pointer' : 'not-allowed',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '8px',
-                                            padding: '8px 16px',
-                                            background: selectedFriend.isInCall ? '#EF4444' : '#3B82F6',
-                                            color: 'white',
-                                            border: 'none',
-                                            borderRadius: '999px',
-                                            fontWeight: '600',
-                                            fontSize: '0.9rem',
-                                            transition: 'background 0.2s'
-                                        }}
-                                        onMouseOver={(e) => (selectedFriend.is_online && !selectedFriend.isInCall) && (e.currentTarget.style.background = '#2563EB')}
-                                        onMouseOut={(e) => (selectedFriend.is_online && !selectedFriend.isInCall) && (e.currentTarget.style.background = (selectedFriend.isInCall ? '#EF4444' : '#3B82F6'))}
+                                        className={`${styles.callActionBtn} ${selectedFriend.isInCall ? styles.callActionBtnBusy : (!selectedFriend.is_online ? styles.callActionBtnDisabled : '')}`}
                                     >
                                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.42 19.42 0 0 1-3.33-2.67m-2.67-3.34a19.79 19.79 0 0 1-3.07-8.63A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91"></path></svg>
                                         {selectedFriend.isInCall ? 'Occupé' : 'Appeler'}
@@ -348,8 +325,8 @@ export default function MessagesPage() {
                                 <div className={styles.noChatIcon}>
                                     <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
                                 </div>
-                                <p style={{fontSize:'18px', fontWeight:700, color:'#1E3664', marginBottom:8}}>Vos Conversations</p>
-                                <p style={{fontSize:'14px'}}>Sélectionnez un contact pour commencer à discuter.</p>
+                                <p className={styles.noChatTitle}>Vos Conversations</p>
+                                <p className={styles.noChatText}>Sélectionnez un contact pour commencer à discuter.</p>
                             </div>
                         )}
                     </motion.div>

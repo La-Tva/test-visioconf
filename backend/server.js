@@ -19,21 +19,31 @@ const io = new Server(server, {
     }
 });
 
+// Middleware
+app.use(express.json());
+
 // Database Connection
-mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/visioconf')
+const mongoURI = process.env.MONGO_URI || 'mongodb://localhost:27017/visioconf';
+console.log('Connecting to MongoDB at:', mongoURI);
+mongoose.connect(mongoURI)
     .then(() => console.log('MongoDB Connected'))
     .catch(err => console.error('MongoDB Connection Error:', err));
-    
-// Call Tracking
+
 // Call Tracking
 const activeCalls = new Map(); // socketId -> Set of targetSocketIds
 const activeGroupCalls = new Map(); // teamId -> Set of { socketId, userId, user }
 const pendingJoinRequests = new Map(); // teamId -> Set of { socketId, userId, user, timestamp }
 
 function getActiveCallsCount() {
-    let totalPairs = 0;
-    activeCalls.forEach(targets => totalPairs += targets.size);
-    return Math.floor(totalPairs / 2);
+    try {
+        let totalPairs = 0;
+        activeCalls.forEach(targets => {
+            if (targets && targets.size) totalPairs += targets.size;
+        });
+        return Math.floor(totalPairs / 2);
+    } catch (e) {
+        return 0;
+    }
 }
 
 function broadcastCallCount() {
@@ -42,38 +52,166 @@ function broadcastCallCount() {
 }
 
 async function broadcastUserCallStatus(socketId) {
-    let isInCall = activeCalls.has(socketId);
-    
-    // Also check group calls
-    if (!isInCall) {
-        for (const [teamId, participants] of activeGroupCalls) {
-            if ([...participants].some(p => p.socketId === socketId)) {
-                isInCall = true;
-                break;
+    try {
+        let isInCall = activeCalls.has(socketId);
+        
+        // Also check group calls
+        if (!isInCall) {
+            for (const [teamId, participants] of activeGroupCalls) {
+                if (participants && [...participants].some(p => p.socketId === socketId)) {
+                    isInCall = true;
+                    break;
+                }
             }
         }
-    }
 
-    const User = require('./models/User');
-    const user = await User.findOne({ socket_id: socketId });
-    if (user) {
-        io.emit('message', JSON.stringify({ 
-            user_call_status_changed: { 
-                userId: user._id, 
-                isInCall: isInCall 
-            } 
-        }));
+        const User = require('./models/User');
+        const user = await User.findOne({ socket_id: socketId });
+        if (user) {
+            io.emit('message', JSON.stringify({ 
+                user_call_status_changed: { 
+                    userId: user._id, 
+                    isInCall: isInCall 
+                } 
+            }));
+        }
+    } catch (e) {
+        console.error('Error in broadcastUserCallStatus:', e);
     }
 }
 
 async function broadcastUserOnlineStatus(userId, is_online) {
-    io.emit('message', JSON.stringify({
-        user_status_changed: {
-            userId: userId,
-            is_online: is_online
-        }
-    }));
+    try {
+        io.emit('message', JSON.stringify({
+            user_status_changed: {
+                userId: userId,
+                is_online: is_online
+            }
+        }));
+    } catch (e) {
+        console.error('Error in broadcastUserOnlineStatus:', e);
+    }
 }
+
+// REST API Endpoints for SWR
+app.get('/api/users', async (req, res) => {
+    try {
+        const users = await User.find({}, '-password');
+        res.json(users);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.get('/api/friends/:userId', async (req, res) => {
+    try {
+        const Message = require('./models/Message');
+        const user = await User.findById(req.params.userId).populate('friends', 'firstname email is_online disturb_status picture role');
+        if (user) {
+            const friendsWithCount = await Promise.all(user.friends.map(async f => {
+                const count = await Message.countDocuments({ sender: f._id, receiver: req.params.userId, read: false });
+                return { ...f.toObject(), unreadCount: count };
+            }));
+            res.json(friendsWithCount);
+        } else {
+            res.status(404).json({ error: 'User not found' });
+        }
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.get('/api/teams/:userId', async (req, res) => {
+    try {
+        const Team = require('./models/Team');
+        const teams = await Team.find({
+            $or: [{ owner: req.params.userId }, { members: req.params.userId }]
+        }).populate('members', 'firstname picture is_online role').populate('owner', 'firstname role picture');
+        res.json(teams);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.get('/api/conversations/recent/:userId', async (req, res) => {
+    const { userId } = req.params;
+    try {
+        const Message = require('./models/Message');
+        const User = require('./models/User');
+        const Team = require('./models/Team');
+
+        const unreadMessages = await Message.find({
+            receiver: userId,
+            read: false,
+            team: { $exists: false }
+        }).populate('sender', 'firstname picture role');
+
+        const senderMap = new Map();
+        unreadMessages.forEach(msg => {
+            if (!msg.sender) return;
+            const senderId = msg.sender._id.toString();
+            if (!senderMap.has(senderId)) {
+                senderMap.set(senderId, {
+                    type: 'private',
+                    id: senderId,
+                    name: msg.sender.firstname,
+                    picture: msg.sender.picture,
+                    count: 0,
+                    lastMessage: msg.content,
+                    timestamp: msg.createdAt
+                });
+            }
+            const data = senderMap.get(senderId);
+            data.count++;
+            if (new Date(msg.createdAt) > new Date(data.timestamp)) {
+                data.lastMessage = msg.content;
+                data.timestamp = msg.createdAt;
+            }
+        });
+
+        const teamsWithUnread = await Team.find({
+            $or: [{ owner: userId }, { members: userId }]
+        });
+
+        teamsWithUnread.forEach(team => {
+            let count = 0;
+            if (team.unreadCounts) {
+                if (typeof team.unreadCounts.get === 'function') {
+                    count = team.unreadCounts.get(userId) || 0;
+                } else {
+                    count = team.unreadCounts[userId] || 0;
+                }
+            }
+            if (count > 0) {
+                senderMap.set(team._id.toString(), {
+                    type: 'team',
+                    id: team._id,
+                    name: team.name,
+                    picture: null,
+                    count: count,
+                    lastMessage: "Nouveaux messages",
+                    timestamp: team.updatedAt
+                });
+            }
+        });
+
+        const conversations = Array.from(senderMap.values())
+            .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+        res.json(conversations);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.get('/api/calls/active/count', (req, res) => {
+    try {
+        const count = getActiveCallsCount();
+        res.json({ count });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
 
 // Socket.io Logic
 io.on('connection', (socket) => {
@@ -96,6 +234,9 @@ io.on('connection', (socket) => {
                      user.last_connection = Date.now();
                      await user.save();
                      
+                     // Populate friendRequests to ensure recipient sees them on login
+                     await user.populate('friendRequests', 'firstname email picture role');
+
                      broadcastUserOnlineStatus(user._id, true);
  
                      socket.emit('message', JSON.stringify({
@@ -112,6 +253,23 @@ io.on('connection', (socket) => {
                          }
                      }));
                  }
+            }
+            // Handle Identification (Lighter check than login)
+            else if (message.authenticate) {
+                const { _id } = message.authenticate;
+                try {
+                    const user = await User.findById(_id);
+                    if (user) {
+                        user.socket_id = socket.id;
+                        user.is_online = true;
+                        user.last_connection = Date.now();
+                        await user.save();
+                        console.log(`User ${_id} (${user.firstname}) identified. Socket: ${socket.id}`);
+                        broadcastUserOnlineStatus(_id, true);
+                    }
+                } catch (e) {
+                    console.error('Identification error:', e);
+                }
             }
             // Handle Registration
             else if (message.register) {
@@ -305,6 +463,9 @@ io.on('connection', (socket) => {
                         targetUser.friendRequests.push(fromUserId);
                         await targetUser.save();
 
+                        // Broadast update to everyone so SWR refreshes
+                        io.emit('message', JSON.stringify({ user_updated: true }));
+
                         // Notify target if online
                         if (targetUser.is_online && targetUser.socket_id) {
                             io.to(targetUser.socket_id).emit('message', JSON.stringify({
@@ -332,21 +493,24 @@ io.on('connection', (socket) => {
                          user.friends = user.friends.filter(id => id.toString() !== friendId);
                          friend.friends = friend.friends.filter(id => id.toString() !== userId);
                          
-                         await user.save();
-                         await friend.save();
+                          await user.save();
+                          await friend.save();
 
-                         // Notify both
-                         const response = {
-                             friend_removed: {
-                                 userId,
-                                 friendId
-                             }
-                         };
-                         
-                         socket.emit('message', JSON.stringify(response));
-                         if (friend.is_online && friend.socket_id) {
-                             io.to(friend.socket_id).emit('message', JSON.stringify(response));
-                         }
+                          // Broadast update to everyone
+                          io.emit('message', JSON.stringify({ user_updated: true }));
+
+                          // Notify both
+                          const response = {
+                              friend_removed: {
+                                  userId,
+                                  friendId
+                              }
+                          };
+                          
+                          socket.emit('message', JSON.stringify(response));
+                          if (friend.is_online && friend.socket_id) {
+                              io.to(friend.socket_id).emit('message', JSON.stringify(response));
+                          }
                     }
                 } catch(e) {
                     console.error('Remove Friend Error:', e);
@@ -363,6 +527,9 @@ io.on('connection', (socket) => {
                         // Remove request
                         user.friendRequests = user.friendRequests.filter(id => id.toString() !== requesterId);
                         await user.save();
+
+                        // Broadast update to everyone
+                        io.emit('message', JSON.stringify({ user_updated: true }));
 
                         if (accepted) {
                             // Add to friends for both
@@ -641,8 +808,11 @@ io.on('connection', (socket) => {
                     });
                     await newTeam.save();
 
-                    // Populate members for response
-                    await newTeam.populate('members', 'firstname email is_online picture role');
+                    // Populate members and owner for response
+                    await newTeam.populate([
+                        { path: 'members', select: 'firstname email is_online picture role' },
+                        { path: 'owner', select: 'firstname role picture' }
+                    ]);
                     
                     const response = {
                         team_creating_status: {
@@ -667,7 +837,7 @@ io.on('connection', (socket) => {
                              { owner: userId },
                              { members: userId }
                          ]
-                     }).populate('members', 'firstname picture is_online role').populate('owner', 'firstname role');
+                     }).populate('members', 'firstname picture is_online role').populate('owner', 'firstname role picture');
  
                      socket.emit('message', JSON.stringify({
                          teams: {
@@ -695,13 +865,17 @@ io.on('connection', (socket) => {
                     if (userId) {
                          const team = await Team.findById(teamId);
                          if (team && team.unreadCounts) {
-                             team.unreadCounts.set(userId, 0);
+                             if (typeof team.unreadCounts.set === 'function') {
+                                 team.unreadCounts.set(userId, 0);
+                             } else {
+                                 team.unreadCounts[userId] = 0;
+                             }
                              await team.save();
                              
                              // Send updated team list (to clear bubble in sidebar)
-                             const myTeams = await Team.find({
+                              const myTeams = await Team.find({
                                 $or: [ { owner: userId }, { members: userId } ]
-                             }).populate('members', 'firstname picture is_online role').populate('owner', 'firstname role');
+                             }).populate('members', 'firstname picture is_online role').populate('owner', 'firstname role picture');
 
                              socket.emit('message', JSON.stringify({
                                  teams: {
@@ -761,8 +935,14 @@ io.on('connection', (socket) => {
                         let updated = false;
                         for (const userId of recipientIds) {
                             if (userId !== senderId) { // Don't count for sender
-                                const currentCount = team.unreadCounts.get(userId) || 0;
-                                team.unreadCounts.set(userId, currentCount + 1);
+                                let currentCount = 0;
+                                if (typeof team.unreadCounts.get === 'function') {
+                                    currentCount = team.unreadCounts.get(userId) || 0;
+                                    team.unreadCounts.set(userId, currentCount + 1);
+                                } else {
+                                    currentCount = team.unreadCounts[userId] || 0;
+                                    team.unreadCounts[userId] = currentCount + 1;
+                                }
                                 updated = true;
                             }
                         }
@@ -790,7 +970,7 @@ io.on('connection', (socket) => {
                                      // We need to re-fetch to get populated fields correctly for the list
                                      const myTeams = await Team.find({
                                         $or: [ { owner: userId }, { members: userId } ]
-                                     }).populate('members', 'firstname picture is_online role').populate('owner', 'firstname role');
+                                     }).populate('members', 'firstname picture is_online role').populate('owner', 'firstname role picture');
 
                                      io.to(user.socket_id).emit('message', JSON.stringify({
                                          teams: {
@@ -986,51 +1166,107 @@ io.on('connection', (socket) => {
                 }
             }
 
-            // Handle Get Files (Global Drive style with Space filtering)
+            // Handle Get Files (Recursive hierarchy)
             else if (message.get_files) {
-                const { teamId, spaceId } = message.get_files;
+                const { userId, spaceId, type, category } = message.get_files; 
                 try {
-                    let query = teamId ? { team: teamId } : { team: { $exists: false } };
+                    let effectiveCategory = category || (['personal', 'global', 'team'].includes(type) ? type : 'global');
                     if (spaceId) {
+                        const space = await Space.findById(spaceId);
+                        if (space) effectiveCategory = space.category;
+                    }
+                    let query = {};
+                    
+                    if (spaceId) {
+                        const space = await Space.findById(spaceId);
+                        if (!space) return;
+                        
+                        const user = await User.findById(userId);
+                        if (!user) return;
+
+                        const isOwner = space.owner.toString() === userId;
+                        const isMember = space.members && space.members.some(id => id.toString() === userId);
+                        const isAdminOrTeacher = ['admin', 'enseignant'].includes(user.role);
+                        const isGlobal = space.category === 'global';
+
+                        if (!isOwner && !isMember && !isAdminOrTeacher && !isGlobal) {
+                            return socket.emit('message', JSON.stringify({
+                                files: { success: false, error: 'Accès au dossier refusé' }
+                            }));
+                        }
                         query.space = spaceId;
-                    } else if (!teamId) {
-                        // If root and no team, show only files NOT in a space? 
-                        // Or show all anyway? User said "spaces" so likely folders.
-                        // Let's show only files in that space if spaceId is provided.
-                        // If no spaceId, show files at root (space: null/exists false).
-                        query.space = { $exists: false };
+                    } else {
+                        // Root files filter by owner/category
+                        query.space = { $in: [null, undefined] };
+                        query.category = effectiveCategory; // STRICT FILTER BY CATEGORY
+                        
+                        if (effectiveCategory === 'personal') {
+                            query.owner = userId;
+                        } else if (effectiveCategory === 'team') {
+                            // For team root, maybe just user's files? 
+                            // Usually team files are in spaces, but safety:
+                            query.owner = userId; // Currently only personal files in team root? Or should team root be shared? 
+                            // Let's assume team root is personal workspace context for now or shared if we had a team entity.
+                            // For now, let's keep it safe:
+                            query.owner = userId;
+                        } else {
+                            // GLOBAL: Show all files in category global (no owner check needed for visibility)
+                        }
                     }
 
                     const files = await File.find(query).populate('owner', 'firstname role').sort({ createdAt: -1 });
                     socket.emit('message', JSON.stringify({
-                        files: {
-                            success: true,
-                            files: files
-                        }
+                        files: { success: true, files: files }
                     }));
                 } catch (e) {
                     console.error('Get files error:', e);
                 }
             }
-            // Handle Upload File (Restricted to admin/enseignant)
+            // Handle Upload File
             else if (message.upload_file) {
-                const { name, size, type, url, userId, teamId } = message.upload_file;
+                const { name, size, type, url, userId, spaceId, category } = message.upload_file;
                 try {
                     const user = await User.findById(userId);
-                    if (!user || (user.role !== 'admin' && user.role !== 'enseignant')) {
+                    if (!user) return;
+
+                    let effectiveCategory = category || 'personal';
+                    if (spaceId) {
+                        const space = await Space.findById(spaceId);
+                        if (space) effectiveCategory = space.category;
+                    }
+
+                    // Strict block for non-staff in Global silo
+                    if (effectiveCategory === 'global' && !['admin', 'enseignant'].includes(user.role)) {
                         return socket.emit('message', JSON.stringify({
-                            file_uploading_status: { success: false, error: 'Permission refusée' }
+                            file_uploading_status: { success: false, error: 'Permission refusée pour le silo Commun' }
                         }));
                     }
 
+                    if (spaceId) {
+                        const space = await Space.findById(spaceId);
+                        if (!space) return;
+                        const isOwner = space.owner.toString() === userId;
+                        const isMember = space.members && space.members.some(id => id.toString() === userId);
+                        const isAdminOrTeacher = ['admin', 'enseignant'].includes(user.role);
+
+                        if (!isOwner && !isMember && !isAdminOrTeacher) {
+                            return socket.emit('message', JSON.stringify({
+                                file_uploading_status: { success: false, error: 'Accès au dossier refusé' }
+                            }));
+                        }
+                    } 
+
                     const newFile = new File({
-                        name, size, type, url, owner: userId, team: teamId,
-                        space: message.upload_file.spaceId || undefined
+                        name, size, type, url, owner: userId,
+                        space: spaceId || undefined,
+                        category: effectiveCategory // SAVE CATEGORY
                     });
                     await newFile.save();
-                    // Broadcast success
+                    
+                    const fullFile = await File.findById(newFile._id).populate('owner', 'firstname role');
+
                     io.emit('message', JSON.stringify({
-                        file_uploading_status: { success: true, file: newFile }
+                        file_uploading_status: { success: true, file: fullFile }
                     }));
                 } catch (e) {
                     console.error('Upload file error:', e);
@@ -1039,46 +1275,133 @@ io.on('connection', (socket) => {
                     }));
                 }
             }
-            // Handle Get Spaces
+            // Handle Get Spaces (Hierarchical & Categorized)
             else if (message.get_spaces) {
+                const { userId, category, type, parentId } = message.get_spaces; 
                 try {
-                    const spaces = await Space.find().sort({ name: 1 });
-                    socket.emit('message', JSON.stringify({
-                        spaces: {
-                            success: true,
-                            spaces: spaces
+                    let query = { parent: parentId ? parentId : { $in: [null, undefined] } };
+                    let effectiveCategory = category || (['personal', 'global', 'team'].includes(type) ? type : 'global');
+
+                    if (parentId) {
+                        const parent = await Space.findById(parentId);
+                        if (parent) effectiveCategory = parent.category;
+                    }
+
+                    const user = await User.findById(userId);
+                    if (!user) return;
+
+                    if (effectiveCategory === 'personal') {
+                        query.owner = userId;
+                        query.category = 'personal';
+                    } else if (effectiveCategory === 'global') {
+                        query.category = 'global';
+                        // Only staff can see ALL global spaces if needed? 
+                        // Actually, let's keep it simple: global is school-wide.
+                    } else if (effectiveCategory === 'team') {
+                        query.category = 'team';
+                        if (!['admin', 'enseignant'].includes(user.role)) {
+                            query.$or = [{ owner: userId }, { members: userId }];
                         }
+                    }
+                    console.log('GET SPACES QUERY:', JSON.stringify(query));
+
+                    const spaces = await Space.find(query)
+                        .populate('members', 'firstname role')
+                        .populate('owner', 'firstname role')
+                        .sort({ name: 1 });
+                        
+                    socket.emit('message', JSON.stringify({
+                        spaces: { success: true, spaces: spaces, parentId: parentId || null }
                     }));
                 } catch (e) {
                     console.error('Get spaces error:', e);
                 }
             }
-            // Handle Create Space (Restricted to admin/enseignant)
+            // Handle Create Space
             else if (message.create_space) {
-                const { name, userId } = message.create_space;
+                const { name, userId, category, members, parentId } = message.create_space;
                 try {
                     const user = await User.findById(userId);
-                    if (!user || (user.role !== 'admin' && user.role !== 'enseignant')) {
+                    if (!user) return;
+
+                    let effectiveCategory = category || 'personal';
+                    if (parentId) {
+                        const parent = await Space.findById(parentId);
+                        if (parent) effectiveCategory = parent.category;
+                    }
+
+                    // Students restricted from Global
+                    if (effectiveCategory === 'global' && !['admin', 'enseignant'].includes(user.role)) {
                         return socket.emit('message', JSON.stringify({
                             space_creating_status: { success: false, error: 'Permission refusée' }
                         }));
                     }
-                    const newSpace = new Space({ name, owner: userId });
+                    console.log('CREATING SPACE:', { name, effectiveCategory, parentId });
+
+                    const newSpace = new Space({ 
+                        name, 
+                        owner: userId, 
+                        category: effectiveCategory,
+                        parent: parentId || null,
+                        members: members || [],
+                        isPersonal: (effectiveCategory === 'personal')
+                    });
                     await newSpace.save();
-                    // Broadcast success
+
+                    const fullSpace = await Space.findById(newSpace._id)
+                        .populate('members', 'firstname role')
+                        .populate('owner', 'firstname role');
+
                     io.emit('message', JSON.stringify({
-                        space_creating_status: { success: true, space: newSpace }
+                        space_creating_status: { success: true, space: fullSpace }
                     }));
                 } catch (e) {
                     console.error('Create space error:', e);
+                    socket.emit('message', JSON.stringify({
+                        space_creating_status: { success: false, error: 'Erreur lors de la création' }
+                    }));
                 }
             }
-            // Handle Delete Space (Restricted to admin/enseignant)
+            // Handle Rename Space
+            else if (message.rename_space) {
+                const { spaceId, newName, userId } = message.rename_space;
+                try {
+                    const user = await User.findById(userId);
+                    const space = await Space.findById(spaceId);
+                    if (!user || !space) return;
+
+                    const isOwner = space.owner.toString() === userId;
+                    const isAdminOrTeacher = ['admin', 'enseignant'].includes(user.role);
+
+                    if (!isOwner && !isAdminOrTeacher) {
+                        return socket.emit('message', JSON.stringify({
+                            space_renaming_status: { success: false, error: 'Permission refusée' }
+                        }));
+                    }
+
+                    space.name = newName;
+                    await space.save();
+
+                    io.emit('message', JSON.stringify({
+                        space_renaming_status: { success: true, spaceId, newName }
+                    }));
+                } catch (e) {
+                    console.error('Rename space error:', e);
+                }
+            }
+            // Handle Delete Space
             else if (message.delete_space) {
                 const { spaceId, userId } = message.delete_space;
                 try {
                     const user = await User.findById(userId);
-                    if (!user || (user.role !== 'admin' && user.role !== 'enseignant')) {
+                    const space = await Space.findById(spaceId);
+                    if (!user || !space) return;
+
+                    // Allow if owner OR if user is admin/teacher
+                    const isOwner = space.owner.toString() === userId;
+                    const isAdminOrTeacher = ['admin', 'enseignant'].includes(user.role);
+
+                    if (!isOwner && !isAdminOrTeacher) {
                         return socket.emit('message', JSON.stringify({
                             space_deleting_status: { success: false, error: 'Permission refusée' }
                         }));
@@ -1086,7 +1409,6 @@ io.on('connection', (socket) => {
                     
                     // Unlink files from this space before deleting
                     await File.updateMany({ space: spaceId }, { $unset: { space: "" } });
-                    
                     await Space.findByIdAndDelete(spaceId);
                     
                     // Broadcast success
@@ -1101,30 +1423,160 @@ io.on('connection', (socket) => {
                 }
             }
 
-            // Handle Delete File (Restricted to admin/enseignant)
+            // Handle Resolve Path (URL names -> space hierarchy)
+            else if (message.resolve_path) {
+                const { path, category, userId } = message.resolve_path;
+                const names = path || [];
+                try {
+                    let currentParentId = null;
+                    let resolvedPath = [];
+                    let finalCategory = category || 'personal';
+                    
+                    // First pass: try current category
+                    console.log(`[ResolvePath] Attempting: ${names.join('|')} (count: ${names.length}) in category ${finalCategory} for user ${userId}`);
+                    names.forEach((n, i) => console.log(`  [${i}] "${n}" (len: ${n.length})`));
+                    
+                    let matchFound = true;
+                    for (const name of names) {
+                        let parentQuery = currentParentId ? currentParentId : { $in: [null, undefined] };
+                        let query = { name, parent: parentQuery, category: finalCategory };
+                        
+                        if (finalCategory === 'personal') query.owner = userId;
+                        if (finalCategory === 'team') {
+                            const user = await User.findById(userId);
+                            if (user && !['admin', 'enseignant'].includes(user.role)) {
+                                query.$or = [{ owner: userId }, { members: userId }];
+                            }
+                        }
+
+                        // Case-insensitive match for robustness
+                        query.name = { $regex: new RegExp('^' + name + '$', 'i') };
+
+                        let space = await Space.findOne(query).populate('owner', 'firstname role');
+                        
+                        // Fallback: If not found with category, but parent is known, try finding by name and parent only
+                        if (!space && currentParentId) {
+                            console.log(`[ResolvePath] Category mismatch? Trying fallback for "${name}" under parent ${currentParentId}`);
+                            space = await Space.findOne({ name, parent: currentParentId }).populate('owner', 'firstname role');
+                        }
+
+                        if (!space) {
+                            console.log(`[ResolvePath] No match for: "${name}" at parent ${currentParentId} in ${finalCategory}`);
+                            matchFound = false;
+                            break;
+                        }
+                        resolvedPath.push(space);
+                        currentParentId = space._id;
+                        finalCategory = space.category || finalCategory; 
+                    }
+
+                    // Second pass: if no match in current, try others at ROOT only (if names[0] failed)
+                    if (!matchFound && resolvedPath.length === 0) {
+                        console.log(`[ResolvePath] Second pass: checking other silos for root segment...`);
+                        const silos = ['personal', 'global', 'team'];
+                        for (const s of silos) {
+                            if (s === category) continue;
+                            currentParentId = null;
+                            resolvedPath = [];
+                            let subMatch = true;
+                            for (const name of names) {
+                                let parentQuery = currentParentId ? currentParentId : { $in: [null, undefined] };
+                                let query = { name: { $regex: new RegExp('^' + name + '$', 'i') }, parent: parentQuery, category: s };
+                                if (s === 'personal') query.owner = userId;
+                                if (s === 'team') {
+                                    const user = await User.findById(userId);
+                                    if (user && !['admin', 'enseignant'].includes(user.role)) {
+                                        query.$or = [{ owner: userId }, { members: userId }];
+                                    }
+                                }
+                                const space = await Space.findOne(query).populate('owner', 'firstname role');
+                                if (!space) { subMatch = false; break; }
+                                resolvedPath.push(space);
+                                currentParentId = space._id;
+                            }
+                            if (subMatch) {
+                                console.log(`[ResolvePath] Found match in silo: ${s}`);
+                                finalCategory = s;
+                                matchFound = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (matchFound) {
+                        console.log(`[ResolvePath] Success: Resolved ${resolvedPath.length} segments`);
+                        socket.emit('message', JSON.stringify({
+                            resolved_path: { success: true, path: resolvedPath, category: finalCategory }
+                        }));
+                    } else {
+                        console.log(`[ResolvePath] Failure: Path not found in any silo`);
+                        socket.emit('message', JSON.stringify({
+                            resolved_path: { success: false, error: 'Path not found' }
+                        }));
+                    }
+                } catch (e) {
+                    console.error('Resolve path error:', e);
+                    socket.emit('message', JSON.stringify({
+                        resolved_path: { success: false, error: 'Erreur interne' }
+                    }));
+                }
+            }
+
+            // Handle Delete File
             else if (message.delete_file) {
                 const { fileId, userId } = message.delete_file;
                 try {
                     const user = await User.findById(userId);
-                    if (!user || (user.role !== 'admin' && user.role !== 'enseignant')) {
+                    const file = await File.findById(fileId);
+                    if (!user || !file) return;
+
+                    const isOwner = file.owner.toString() === userId;
+                    const isAdminOrTeacher = ['admin', 'enseignant'].includes(user.role);
+
+                    if (!isOwner && !isAdminOrTeacher) {
                         return socket.emit('message', JSON.stringify({
-                            'file deleting status': { success: false, error: 'Permission refusée' }
+                            'file_deleting_status': { success: false, error: 'Permission refusée' }
                         }));
                     }
 
-                    const file = await File.findById(fileId);
-                    if (file) {
-                        await File.findByIdAndDelete(fileId);
-                        // Broadcast to ALL users so the file disappears for everyone immediately
-                        io.emit('message', JSON.stringify({
-                            file_deleting_status: { success: true, fileId: fileId }
-                        }));
-                    }
+                    await File.findByIdAndDelete(fileId);
+                    // Broadcast to ALL users so the file disappears for everyone immediately
+                    io.emit('message', JSON.stringify({
+                        file_deleting_status: { success: true, fileId: fileId }
+                    }));
                 } catch (e) {
                     console.error('Delete file error:', e);
                     socket.emit('message', JSON.stringify({
-                        'file deleting status': { success: false, error: 'Erreur lors de la suppression' }
+                        'file_deleting_status': { success: false, error: 'Erreur lors de la suppression' }
                     }));
+                }
+            }
+
+            // Handle Update File (Rename)
+            else if (message.update_file) {
+                const { fileId, newName, userId } = message.update_file;
+                try {
+                    const user = await User.findById(userId);
+                    const file = await File.findById(fileId);
+                    if (!user || !file) return;
+
+                    const isOwner = file.owner.toString() === userId;
+                    const isAdminOrTeacher = ['admin', 'enseignant'].includes(user.role);
+
+                    if (!isOwner && !isAdminOrTeacher) {
+                        return socket.emit('message', JSON.stringify({
+                            file_updating_status: { success: false, error: 'Permission refusée' }
+                        }));
+                    }
+
+                    file.name = newName;
+                    await file.save();
+
+                    io.emit('message', JSON.stringify({
+                        file_updating_status: { success: true, fileId, newName }
+                    }));
+                } catch (e) {
+                    console.error('Update file error:', e);
                 }
             }
 
@@ -1593,7 +2045,8 @@ io.on('connection', (socket) => {
             }
 
             else if (message.get_active_calls) {
-                socket.emit('message', JSON.stringify({ active_calls_count: getActiveCallsCount() }));
+                const count = getActiveCallsCount();
+                socket.emit('message', JSON.stringify({ active_calls_count: count }));
             }
             else {
                  // Determine where to route other messages
@@ -1607,106 +2060,101 @@ io.on('connection', (socket) => {
     });
 
     socket.on('disconnect', async () => {
-        console.log('User disconnected:', socket.id);
-        
-        // --- Cleanup Group Calls (Abrupt Disconnect) ---
-        for (const [teamId, participants] of activeGroupCalls) {
-             let userToRemove = null;
-             participants.forEach(p => { if(p.socketId === socket.id) userToRemove = p; });
-             
-             if (userToRemove) {
-                 console.log(`[DISCONNECT] Removing ${userToRemove.user?.firstname} from team call ${teamId}`);
-                 try {
-                     const Team = require('./models/Team');
-                     const team = await Team.findById(teamId).populate('owner').populate('members');
-                     
-                     if (team) {
-                         const recipients = [...team.members, team.owner];
-                         const isOwner = team.owner._id.toString() === userToRemove.userId.toString();
+        try {
+            console.log('User disconnected:', socket.id);
 
-                         if (isOwner) {
-                             // OWNER DISCONNECTED -> END CALL
-                             console.log(`[DISCONNECT] Owner ${userToRemove.user?.firstname} disconnected. Ending call.`);
-                             activeGroupCalls.delete(teamId);
-                             recipients.forEach(r => {
-                                 if (r && r.socket_id && r.is_online && r.socket_id !== socket.id) {
-                                     io.to(r.socket_id).emit('message', JSON.stringify({
-                                         'team-call-ended': { teamId: teamId, reason: 'owner_left' }
-                                     }));
-                                     io.to(r.socket_id).emit('message', JSON.stringify({
-                                         'team-call-status': { teamId: teamId, active: false, participants: [] }
-                                     }));
-                                 }
-                             });
-                         } else {
-                             // MEMBER DISCONNECTED
-                             participants.delete(userToRemove);
-                             const isActive = participants.size > 0;
-                             
-                             recipients.forEach(r => {
-                                 if (r && r.socket_id && r.is_online && r.socket_id !== socket.id) {
-                                     io.to(r.socket_id).emit('message', JSON.stringify({
-                                         'participant-left': { socket: socket.id, teamId: teamId }
-                                     }));
-                                     io.to(r.socket_id).emit('message', JSON.stringify({
-                                        'participant-left-notification': { 
-                                            teamId: teamId, 
-                                            firstname: userToRemove.user?.firstname || 'Un participant' 
-                                        } 
-                                    }));
-                                     io.to(r.socket_id).emit('message', JSON.stringify({
-                                         'team-call-status': {
-                                             teamId: team._id,
-                                             active: isActive,
-                                             participants: Array.from(participants),
-                                             ownerId: team.owner._id
-                                         }
-                                     }));
-                                 }
-                             });
-                             if (participants.size === 0) activeGroupCalls.delete(teamId);
-                         }
-                     }
-                 } catch (e) {
-                     console.error("[DISCONNECT] Error cleaning up group call:", e);
-                 }
-             }
-        }
-
-        // Cleanup Active Calls (1-on-1)
-        if (activeCalls.has(socket.id)) {
-            const targets = activeCalls.get(socket.id);
-            targets.forEach(targetId => {
-                if (activeCalls.has(targetId)) {
-                    activeCalls.get(targetId).delete(socket.id);
-                    if (activeCalls.get(targetId).size === 0) activeCalls.delete(targetId);
+            // Cleanup Active Group Calls
+            for (const [teamId, participants] of activeGroupCalls) {
+                const userToRemove = [...participants].find(p => p.socketId === socket.id);
+                if (userToRemove) {
+                    try {
+                        const Team = require('./models/Team');
+                        const User = require('./models/User');
+                        const team = await Team.findById(teamId).populate('owner').populate('members');
+                        
+                        if (team) {
+                            const recipients = [...team.members, team.owner];
+                            if (userToRemove.userId === (team.owner._id.toString() || team.owner)) {
+                                // OWNER DISCONNECTED
+                                activeGroupCalls.delete(teamId);
+                                recipients.forEach(r => {
+                                    if (r && r.socket_id && r.is_online && r.socket_id !== socket.id) {
+                                        io.to(r.socket_id).emit('message', JSON.stringify({ 'team-call-ended': { teamId: teamId } }));
+                                    }
+                                });
+                            } else {
+                                // MEMBER DISCONNECTED
+                                participants.delete(userToRemove);
+                                const isActive = participants.size > 0;
+                                
+                                recipients.forEach(r => {
+                                    if (r && r.socket_id && r.is_online && r.socket_id !== socket.id) {
+                                        io.to(r.socket_id).emit('message', JSON.stringify({
+                                            'participant-left': { socket: socket.id, teamId: teamId }
+                                        }));
+                                        io.to(r.socket_id).emit('message', JSON.stringify({
+                                           'participant-left-notification': { 
+                                               teamId: teamId, 
+                                               firstname: userToRemove.user?.firstname || 'Un participant' 
+                                           } 
+                                       }));
+                                        io.to(r.socket_id).emit('message', JSON.stringify({
+                                            'team-call-status': {
+                                                teamId: team._id,
+                                                active: isActive,
+                                                participants: Array.from(participants),
+                                                ownerId: team.owner._id
+                                            }
+                                        }));
+                                    }
+                                });
+                                if (participants.size === 0) activeGroupCalls.delete(teamId);
+                            }
+                        }
+                    } catch (e) {
+                        console.error("[DISCONNECT] Error cleaning up group call:", e);
+                    }
                 }
-            });
-            activeCalls.delete(socket.id);
-            broadcastCallCount();
-            broadcastUserCallStatus(socket.id);
-        }
+            }
 
-        const user = await User.findOne({ socket_id: socket.id });
-        if (user) {
-            user.is_online = false;
-            user.last_seen = Date.now();
-            await user.save();
-            broadcastUserOnlineStatus(user._id, false);
+            // Cleanup Active Calls (1-on-1)
+            if (activeCalls.has(socket.id)) {
+                const targets = activeCalls.get(socket.id);
+                targets.forEach(targetId => {
+                    if (activeCalls.has(targetId)) {
+                        activeCalls.get(targetId).delete(socket.id);
+                        if (activeCalls.get(targetId).size === 0) activeCalls.delete(targetId);
+                    }
+                });
+                activeCalls.delete(socket.id);
+                broadcastCallCount();
+                broadcastUserCallStatus(socket.id).catch(e => console.error(e));
+            }
+
+            const User = require('./models/User');
+            const user = await User.findOne({ socket_id: socket.id });
+            if (user) {
+                user.is_online = false;
+                user.last_seen = Date.now();
+                await user.save();
+                broadcastUserOnlineStatus(user._id, false).catch(e => console.error(e));
+            }
+        } catch (err) {
+            console.error('Disconnect handler error:', err);
         }
     });
     // Handshake for CanalSocketio
         socket.on('demande_liste', () => {
         console.log('Received demande_liste');
         const listes = {
-            emission: ['login_status', 'registration_status', 'users', 'user_updating status', 'user_deleting_status', 'receive_friend_request', 'friend_request_accepted', 'messages', 'friends', 'auth status', 'friend_removed', 'last_messages', 'user_status_changed', 'user_registered', 'user_updated', 'user_deleted', 'team_creating_status', 'teams', 'receive_team_message', 'team_messages', 'leave_team_status', 'team_deleting_status', 'team_updating_status', 'files', 'file_uploading_status', 'file_updating_status', 'file_deleting_status', 'spaces', 'space_creating_status', 'space_deleting_status', 'call-made', 'answer-made', 'ice-candidate', 'call-rejected', 'call-ended', 'active_calls_count', 'user_call_status_changed', 'call-made-group', 'answer-made-group', 'ice-candidate-group', 'team-call-status', 'notify-new-joiner', 'participant-left', 'team-call-ended', 'join-request-received', 'join-request-status', 'participant-left-notification'],
-            abonnement: ['login', 'register', 'get users', 'update user', 'delete_user', 'friend_request', 'friend_response', 'send message', 'get messages', 'mark_messages_read', 'get friends', 'authenticate', 'remove_friend', 'get_last_messages', 'create team', 'get teams', 'team_message', 'get_team_messages', 'leave_team', 'delete team', 'add_team_member', 'remove_team_member', 'get_files', 'get file', 'upload_file', 'update file', 'delete_file', 'create_space', 'get_spaces', 'delete_space', 'call-user', 'make-answer', 'ice-candidate', 'reject-call', 'hang-up', 'call-team', 'get_active_calls', 'call-peer-group', 'make-answer-group', 'ice-candidate-group', 'leave-group-call', 'join-request-response']
+            emission: ['login_status', 'registration_status', 'users', 'user_updating status', 'user_deleting_status', 'receive_friend_request', 'friend_request_accepted', 'messages', 'friends', 'auth status', 'friend_removed', 'last_messages', 'user_status_changed', 'user_registered', 'user_updated', 'user_deleted', 'team_creating_status', 'teams', 'receive_team_message', 'team_messages', 'leave_team_status', 'team_deleting_status', 'team_updating_status', 'files', 'file_uploading_status', 'file_updating_status', 'file_deleting_status', 'spaces', 'space_creating_status', 'space_deleting_status', 'space_renaming_status', 'resolved_path', 'call-made', 'answer-made', 'ice-candidate', 'call-rejected', 'call-ended', 'active_calls_count', 'user_call_status_changed', 'call-made-group', 'answer-made-group', 'ice-candidate-group', 'team-call-status', 'notify-new-joiner', 'participant-left', 'team-call-ended', 'join-request-received', 'join-request-status', 'participant-left-notification'],
+            abonnement: ['login', 'register', 'get users', 'update user', 'delete_user', 'friend_request', 'friend_response', 'send message', 'get messages', 'mark_messages_read', 'get friends', 'authenticate', 'remove_friend', 'get_last_messages', 'create team', 'get teams', 'team_message', 'get_team_messages', 'leave_team', 'delete team', 'add_team_member', 'remove_team_member', 'get_files', 'get file', 'upload_file', 'update file', 'delete_file', 'create_space', 'get_spaces', 'delete_space', 'rename_space', 'resolve_path', 'call-user', 'make-answer', 'ice-candidate', 'reject-call', 'hang-up', 'call-team', 'get_active_calls', 'call-peer-group', 'make-answer-group', 'ice-candidate-group', 'leave-group-call', 'join-request-response']
         };
         socket.emit('donne_liste', JSON.stringify(listes));
     });
 });
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 4000;
 server.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });

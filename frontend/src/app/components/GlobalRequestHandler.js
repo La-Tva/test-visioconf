@@ -119,45 +119,28 @@ export default function GlobalRequestHandler() {
     return (
         <>
             {request && (
-                <div style={{
-                    position: 'fixed',
-                    bottom: '20px',
-                    right: '20px',
-                    backgroundColor: 'white',
-                    padding: '20px',
-                    borderRadius: '12px',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                    zIndex: 9999,
-                    border: '1px solid #e2e8f0'
-                }}>
-                    <h4 style={{margin: '0 0 10px 0', fontSize:'16px'}}>Demande d'ami</h4>
-                    <p style={{margin: '0 0 15px 0', color:'#64748B'}}>
-                        <strong>{request.firstname}</strong> souhaite vous ajouter.
-                    </p>
-                    <div style={{display:'flex', gap:'10px'}}>
+                <div className={styles.glassToast}>
+                    <div className={styles.toastHeader}>
+                        <div className={styles.toastIcon}>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><line x1="19" y1="8" x2="19" y2="14"></line><line x1="22" y1="11" x2="16" y2="11"></line></svg>
+                        </div>
+                        <div className={styles.toastTitleGroup}>
+                            <h4 className={styles.toastTitle}>Demande d'invitation</h4>
+                            <p className={styles.toastMessage}>
+                                <strong>{request.firstname || users.find(u => u._id === (request._id || request))?.firstname || 'Un utilisateur'}</strong> souhaite vous ajouter.
+                            </p>
+                        </div>
+                    </div>
+                    <div className={styles.toastActions}>
                         <button 
+                            className={styles.acceptBtn}
                             onClick={() => handleResponse(true)}
-                            style={{
-                                padding: '8px 16px',
-                                backgroundColor: '#22C55E',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '6px',
-                                cursor: 'pointer'
-                            }}
                         >
                             Accepter
                         </button>
                         <button 
+                            className={styles.declineBtn}
                             onClick={() => handleResponse(false)}
-                            style={{
-                                padding: '8px 16px',
-                                backgroundColor: '#EF4444',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '6px',
-                                cursor: 'pointer'
-                            }}
                         >
                             Refuser
                         </button>

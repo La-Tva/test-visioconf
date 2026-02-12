@@ -479,7 +479,7 @@ export default function TeamCallOverlay() {
                                         {pendingJoinRequests.map(req => (
                                             <div key={req.socketId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'white', padding: '8px', borderRadius: '8px' }}>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                    <img src={`http://localhost:3001/${req.picture}`} style={{ width: '32px', height: '32px', borderRadius: '50%' }} />
+                                                    <img src={`http://localhost:4000/${req.picture}`} style={{ width: '32px', height: '32px', borderRadius: '50%' }} />
                                                     <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>{req.firstname}</span>
                                                 </div>
                                                 <div style={{ display: 'flex', gap: '8px' }}>
@@ -571,7 +571,7 @@ export default function TeamCallOverlay() {
                                                             <div key={p.socketId} style={{ minWidth: '50px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                                                                 <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#475569', display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontWeight:'600' , overflow:'hidden' }}>
                                                                     {p.user?.picture && !p.user.picture.includes('default') ? (
-                                                                         <img src={`http://localhost:3001/${p.user.picture}`} style={{width:'100%', height:'100%', objectFit:'cover'}} />
+                                                                         <img src={`http://localhost:4000/${p.user.picture}`} style={{width:'100%', height:'100%', objectFit:'cover'}} />
                                                                     ) : (
                                                                          p.user?.firstname?.charAt(0) || p.firstname?.charAt(0) || '?'
                                                                     )}

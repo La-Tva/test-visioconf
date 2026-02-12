@@ -108,7 +108,7 @@ export class Controleur {
                 "undefined"
             ) {
                 console.log(
-                    "ERREUR(controleur: le message en émission n'existe plus, on ne peut pas l'enlever: " +
+                    "ERREUR(controleur: le message en abonnement n'existe plus, on ne peut pas l'enlever: " +
                         liste_abonnement[key]
                 )
             } else {
@@ -130,7 +130,7 @@ export class Controleur {
                     if (this.verboseall || this.verbose) {
                         console.log(
                             "INFO(controleur: le message en abonnement " +
-                                liste_emission[key] +
+                                liste_abonnement[key] +
                                 " a été enlevé de la liste pour " +
                                 emetteur.nomDInstance
                         )

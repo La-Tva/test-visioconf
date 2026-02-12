@@ -409,8 +409,20 @@ export default function TeamPage() {
                                 className={`${styles.teamItem} ${activeTeam?._id === team._id ? styles.teamItemActive : ''}`}
                                 onClick={() => openTeamChat(team)}
                             >
-                                <div className={styles.teamAvatar} style={{background: bgColor}}>
-                                    {team.name.substring(0, 1).toUpperCase()}
+                                <div className={styles.teamAvatar} style={{background: team.owner?.picture ? 'transparent' : bgColor}}>
+                                    {team.avatar || team.owner?.picture ? (
+                                        <img 
+                                            src={team.avatar || (team.owner?.picture?.startsWith('http') ? team.owner.picture : `https://api.dicebear.com/9.x/shapes/svg?seed=${team._id}`)} 
+                                            className={styles.avatarImg} 
+                                            alt=""
+                                            onError={(e) => {
+                                                e.target.onerror = null;
+                                                e.target.src = `https://api.dicebear.com/9.x/shapes/svg?seed=${team._id}`;
+                                            }}
+                                        />
+                                    ) : (
+                                        team.name.substring(0, 1).toUpperCase()
+                                    )}
                                 </div>
                                 <div className={styles.teamInfo}>
                                     <div className={styles.teamName}>{team.name}</div>
@@ -421,7 +433,7 @@ export default function TeamPage() {
                                         <div className={styles.ownerInfo}>
                                             <span>Par {team.owner.firstname}</span>
                                             {team.owner.role && team.owner.role !== 'etudiant' && (
-                                                <span className={`${styles.roleBadge} ${styles[team.owner.role]}`} style={{marginLeft: 6}}>
+                                                <span className={`${styles.roleBadge} ${styles[team.owner.role]}`}>
                                                     {team.owner.role}
                                                 </span>
                                             )}
@@ -478,6 +490,18 @@ export default function TeamPage() {
                                         <button className={`${styles.backBtn} ${!isMobile ? styles.mobileHidden : ''}`} onClick={() => setActiveTeam(null)}>
                                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
                                         </button>
+
+                                        <div className={styles.headerAvatar}>
+                                            <img 
+                                                src={activeTeam.avatar || (activeTeam.owner?.picture?.startsWith('http') ? activeTeam.owner.picture : `https://api.dicebear.com/9.x/shapes/svg?seed=${activeTeam._id}`)} 
+                                                className={styles.avatarImg} 
+                                                alt=""
+                                                onError={(e) => {
+                                                    e.target.onerror = null;
+                                                    e.target.src = `https://api.dicebear.com/9.x/shapes/svg?seed=${activeTeam._id}`;
+                                                }}
+                                            />
+                                        </div>
                                         
                                         <div style={{display:'flex', flexDirection:'column'}}>
                                              <h2 className={styles.chatTitle}>{activeTeam.name}</h2>
@@ -489,24 +513,17 @@ export default function TeamPage() {
                                         {/* Join Call Button */}
                                          {activeTeamCalls[activeTeam._id]?.active ? (
                                             <button 
-                                                className={styles.joinCallBtn}
+                                                className={styles.activeCallBadge}
                                                 onClick={() => joinTeamCall(activeTeam._id)}
                                                 disabled={isBusy || joinRequestStatus === 'pending'}
                                                 title={joinRequestStatus === 'pending' ? "En attente..." : "Rejoindre l'appel"}
                                                 style={{
                                                     background: joinRequestStatus === 'pending' ? '#F59E0B' : '#10B981', 
-                                                    color: 'white', 
-                                                    padding: '0 20px', 
-                                                    borderRadius: '20px',
                                                     border: 'none',
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    gap: '8px',
-                                                    height: '40px',
-                                                    fontWeight: 600,
-                                                    fontSize: '0.9rem',
                                                     cursor: 'pointer',
-                                                    animation: 'pulse 2s infinite'
+                                                    padding: '8px 16px',
+                                                    height: 'auto',
+                                                    width: 'fit-content'
                                                 }}
                                             >
                                                 {joinRequestStatus === 'pending' ? 'EN ATTENTE...' : 'REJOINDRE'}
@@ -554,6 +571,12 @@ export default function TeamPage() {
                                                     <div key={index} className={`${styles.messageRow} ${isMe ? styles.myMessageRow : styles.friendMessageRow}`}>
                                                         {!isMe && (
                                                             <div className={styles.senderName}>
+                                                                <img 
+                                                                    src={`https://api.dicebear.com/9.x/shapes/svg?seed=${msg.sender._id}`} 
+                                                                    className={styles.avatarSmall} 
+                                                                    style={{width: 20, height: 20, borderRadius: '50%'}}
+                                                                    alt=""
+                                                                />
                                                                 {msg.sender.firstname}
                                                                 {msg.sender.role && msg.sender.role !== 'etudiant' && (
                                                                     <span className={`${styles.roleBadge} ${styles[msg.sender.role]}`}>
@@ -608,16 +631,14 @@ export default function TeamPage() {
                                                 
                                                 return owner ? (
                                                     <div className={styles.memberItemSmall}>
-                                                        <div style={{display:'flex', alignItems:'center', flex:1}}>
-                                                            <img 
-                                                                src={`https://api.dicebear.com/9.x/shapes/svg?seed=${owner._id}`} 
-                                                                className={styles.avatarSmall} 
-                                                                alt=""
-                                                            />
-                                                            <div style={{display:'flex', flexDirection:'column', marginLeft:10}}>
-                                                                <span style={{fontSize: '14px', fontWeight: '600', color: '#0F172A'}}>{owner.firstname}</span>
-                                                                <span className={`${styles.ownerBadge} ${styles[owner.role || 'admin']}`}>PROPRIÉTAIRE</span>
-                                                            </div>
+                                                        <img 
+                                                            src={`https://api.dicebear.com/9.x/shapes/svg?seed=${owner._id}`} 
+                                                            className={styles.avatarSmall} 
+                                                            alt=""
+                                                        />
+                                                        <div className={styles.memberInfo}>
+                                                            <span className={styles.memberName}>{owner.firstname}</span>
+                                                            <span className={`${styles.ownerBadge} ${styles[owner.role || 'admin']}`}>PROPRIÉTAIRE</span>
                                                         </div>
                                                         {!isMe && (
                                                             <button 
@@ -640,9 +661,9 @@ export default function TeamPage() {
 
                                                 return (
                                                     <div key={m._id} className={styles.memberItemSmall}>
-                                                        <div style={{display:'flex', alignItems:'center', flex:1}}>
-                                                            <img src={`https://api.dicebear.com/9.x/shapes/svg?seed=${m._id}`} className={styles.avatarSmall} alt=""/>
-                                                            <span style={{fontSize: '14px', fontWeight: '500', color: '#475569', marginLeft:10}}>{m.firstname}</span>
+                                                        <img src={`https://api.dicebear.com/9.x/shapes/svg?seed=${m._id}`} className={styles.avatarSmall} alt=""/>
+                                                        <div className={styles.memberInfo}>
+                                                            <span className={styles.memberName}>{m.firstname}</span>
                                                         </div>
                                                         {currentUser._id === activeTeam.owner._id && (
                                                             <button className={styles.removeMemberBtn} onClick={() => handleRemoveMember(m._id)}>
@@ -657,12 +678,12 @@ export default function TeamPage() {
                                  </div>
                             </motion.div>
                         ) : (
-                            <div className={styles.emptyStateContainer} style={{display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', flex:1, color:'#94A3B8'}}>
-                                <div style={{background:'#F1F5F9', padding:24, borderRadius:'50%', marginBottom:16}}>
+                            <div className={styles.emptyStateContainer}>
+                                <div className={styles.emptyStateIcon}>
                                     <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
                                 </div>
-                                <h3 style={{fontSize:18, fontWeight:700, color:'#1E3664', margin:0}}>Aucune équipe sélectionnée</h3>
-                                <p style={{fontSize:14, margin:'8px 0'}}>Sélectionnez une équipe dans le menu pour voir les messages.</p>
+                                <h3 className={styles.emptyStateTitle}>Aucune équipe sélectionnée</h3>
+                                <p className={styles.emptyStateText}>Sélectionnez une équipe dans le menu pour voir les messages.</p>
                             </div>
                         )}
                     </div>

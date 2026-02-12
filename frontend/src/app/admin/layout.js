@@ -1,12 +1,7 @@
 "use client";
 import React from 'react';
+import InternalLayout from '../components/InternalLayout';
 
 export default function AdminLayout({ children }) {
-  return (
-    <div className="responsive-layout">
-      <div className="page-content">
-        {children}
-      </div>
-    </div>
-  );
+  return <InternalLayout>{children}</InternalLayout>;
 }

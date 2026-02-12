@@ -8,6 +8,7 @@ const fileSchema = new mongoose.Schema({
     owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     team: { type: mongoose.Schema.Types.ObjectId, ref: 'Team' }, // optional, if shared in a team
     space: { type: mongoose.Schema.Types.ObjectId, ref: 'Space' }, // optional, if in a space
+    category: { type: String, enum: ['personal', 'global', 'team'], default: 'personal' }
 }, {
     timestamps: true
 });

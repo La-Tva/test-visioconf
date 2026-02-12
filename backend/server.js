@@ -1648,6 +1648,94 @@ io.on('connection', (socket) => {
                     console.error('Update file error:', e);
                 }
             }
+            // Handle Resolve Path (Deep Linking)
+            else if (message.resolve_path) {
+                const { path, userId, category } = message.resolve_path;
+                try {
+                    const user = await User.findById(userId);
+                    if (!user) return;
+
+                    let currentParentId = null;
+                    let resolvedSpace = null;
+
+                    // 1. Find root space (first element of path)
+                    // The path typically starts with "ActiveTab" name like "Privée", "Commun", "Équipe"
+                    // But the actual folder names in DB might differ.
+                    // Actually, the path sent by frontend is [folderName1, folderName2]
+                    
+                    // We need to traverse the path
+                    for (let i = 0; i < path.length; i++) {
+                        const folderName = path[i];
+                        let query = { 
+                            name: folderName, 
+                            parent: currentParentId || { $in: [null, undefined] }
+                        };
+
+                        if (!currentParentId) {
+                            // Root level filtering
+                            if (category === 'personal') {
+                                query.owner = userId;
+                                query.category = 'personal';
+                            } else if (category === 'global') {
+                                query.category = 'global';
+                            } else if (category === 'team') {
+                                query.category = 'team';
+                                if (!['admin', 'enseignant'].includes(user.role)) {
+                                    query.$or = [{ owner: userId }, { members: userId }];
+                                }
+                            }
+                        }
+
+                        const space = await Space.findOne(query);
+                        
+                        if (!space) {
+                            // Path broken
+                            return socket.emit('message', JSON.stringify({
+                                resolved_path: { success: false, error: 'Chemin introuvable' }
+                            }));
+                        }
+
+                        // Check permissions for this space
+                        // We reuse the recursive logic implicitly by traversing
+                        // If we found it via query above (root), we have access.
+                        // For sub-folders, we need to check if we have access.
+                        // But wait! If we are in Team space, subfolders don't have members.
+                        // So we need to check if user had access to PARENT.
+                        // Since we traverse from root, and root check passed, and subfolders inherit...
+                        // We just need to ensure we don't switch into a "private" folder of someone else if that logic existed.
+                        // But spaces don't have "private subfolders" in this model yet.
+                        // However, let's stick to the robust check:
+                        
+                        // If it's a root folder, our query already filtered by access.
+                        // If it's a child folder, we just need to ensure it exists. 
+                        // The existing structure implies if you can see parent, you see child.
+                        
+                        resolvedSpace = space;
+                        currentParentId = space._id;
+                    }
+
+                    if (resolvedSpace) {
+                         const fullSpace = await Space.findById(resolvedSpace._id)
+                            .populate('members', 'firstname role')
+                            .populate('owner', 'firstname role');
+
+                        socket.emit('message', JSON.stringify({
+                            resolved_path: { success: true, space: fullSpace }
+                        }));
+                    } else {
+                        // Empty path -> Root
+                        socket.emit('message', JSON.stringify({
+                            resolved_path: { success: true, space: null }
+                        }));
+                    }
+
+                } catch (e) {
+                    console.error('Resolve path error:', e);
+                    socket.emit('message', JSON.stringify({
+                        resolved_path: { success: false, error: 'Erreur serveur' }
+                    }));
+                }
+            }
 
             else if (message['call-team']) {
                 const { teamId, offer } = message['call-team'];

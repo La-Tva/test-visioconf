@@ -93,6 +93,48 @@ async function broadcastUserOnlineStatus(userId, is_online) {
     }
 }
 
+// Reliable broadcast helper: uses DB-stored socket_id instead of volatile socket props
+// category: 'global'|'team'|'personal'
+// ownerId: the owner's user ID string
+// memberIds: array of member user ID strings (for team)
+// senderSocketId: socket ID of the sender (to skip)
+// eventPayload: object to JSON.stringify and emit
+async function broadcastToAuthorized(io, senderSocketId, eventPayload, category, ownerId, memberIds) {
+    const msgStr = JSON.stringify(eventPayload);
+    try {
+        if (category === 'global') {
+            // Everyone can see global → broadcast to all except sender
+            const sockets = await io.fetchSockets();
+            for (const s of sockets) {
+                if (s.id !== senderSocketId) {
+                    s.emit('message', msgStr);
+                }
+            }
+        } else if (category === 'team') {
+            // Only owner + members
+            const authorizedIds = [...new Set([ownerId, ...(memberIds || [])])];
+            const onlineUsers = await User.find({
+                _id: { $in: authorizedIds },
+                is_online: true,
+                socket_id: { $ne: null }
+            }, 'socket_id');
+            for (const u of onlineUsers) {
+                if (u.socket_id && u.socket_id !== senderSocketId) {
+                    io.to(u.socket_id).emit('message', msgStr);
+                }
+            }
+        } else if (category === 'personal') {
+            // Only the owner
+            const owner = await User.findById(ownerId, 'socket_id is_online');
+            if (owner && owner.is_online && owner.socket_id && owner.socket_id !== senderSocketId) {
+                io.to(owner.socket_id).emit('message', msgStr);
+            }
+        }
+    } catch (e) {
+        console.error('broadcastToAuthorized error:', e);
+    }
+}
+
 // REST API Endpoints for SWR
 app.get('/api/users', async (req, res) => {
     try {
@@ -1350,44 +1392,21 @@ io.on('connection', (socket) => {
                         file_uploading_status: { success: true, file: fullFile }
                     }));
 
-                    // 2. Broadcast to other relevant users
-                    const sockets = await io.fetchSockets();
-                    let associatedSpace = null;
-                    if (newFile.space) {
-                         associatedSpace = await Space.findById(newFile.space);
-                    }
-
-                    for (const s of sockets) {
-                        if (s.id === socket.id) continue; // Skip uploader
-
-                        if (s.userId) {
-                            const sUserRole = s.userRole; 
-                            const sUserId = s.userId;
-                            let canSee = false; // Default deny
-
-                            if (fullFile.category === 'personal') {
-                                canSee = (fullFile.owner._id.toString() === sUserId);
-                            } else if (fullFile.category === 'global') {
-                                canSee = true; 
-                            } else if (fullFile.category === 'team') {
-                                const isFileOwner = fullFile.owner._id.toString() === sUserId;
-                                // STRICT PRIVACY: Admins/Teachers don't see unless members/owners
-                                let isSpaceMember = false;
-                                let isSpaceOwner = false;
-                                if (associatedSpace) {
-                                    if (associatedSpace.members) isSpaceMember = associatedSpace.members.some(m => m.toString() === sUserId);
-                                    isSpaceOwner = associatedSpace.owner.toString() === sUserId;
-                                }
-                                canSee = isFileOwner || isSpaceMember || isSpaceOwner;
-                            }
-
-                            if (canSee) {
-                                s.emit('message', JSON.stringify({
-                                    file_uploading_status: { success: true, file: fullFile }
-                                }));
-                            }
+                    // 2. Broadcast to other relevant users (DB-backed, reliable)
+                    let uploadMemberIds = [];
+                    if (fullFile.category === 'team' && newFile.space) {
+                        const associatedSpace = await Space.findById(newFile.space);
+                        if (associatedSpace) {
+                            uploadMemberIds = (associatedSpace.members || []).map(m => m.toString());
+                            uploadMemberIds.push(associatedSpace.owner.toString());
                         }
                     }
+                    await broadcastToAuthorized(io, socket.id,
+                        { file_uploading_status: { success: true, file: fullFile } },
+                        fullFile.category,
+                        fullFile.owner._id.toString(),
+                        uploadMemberIds
+                    );
                 } catch (e) {
                     console.error('Upload file error:', e);
                     socket.emit('message', JSON.stringify({
@@ -1526,36 +1545,13 @@ io.on('connection', (socket) => {
                         space_creating_status: { success: true, space: fullSpace }
                     }));
 
-                    // 2. Broadcast to other relevant users
-                    const sockets = await io.fetchSockets();
-                    for (const s of sockets) {
-                        // Skip the creator, we just sent it
-                        if (s.id === socket.id) continue;
-
-                        if (s.userId) {
-                            const sUserRole = s.userRole; 
-                            const sUserId = s.userId;
-                            
-                            let canSee = false;
-                            
-                            if (fullSpace.category === 'personal') {
-                                canSee = (fullSpace.owner._id.toString() === sUserId);
-                            } else if (fullSpace.category === 'global') {
-                                canSee = true; 
-                            } else if (fullSpace.category === 'team') {
-                                const isOwner = fullSpace.owner._id.toString() === sUserId;
-                                const isMember = fullSpace.members.some(m => m._id.toString() === sUserId);
-                                // STRICT PRIVACY: Admins/Teachers don't see unless members/owners
-                                canSee = isOwner || isMember; 
-                            }
-
-                            if (canSee) {
-                                s.emit('message', JSON.stringify({
-                                    space_creating_status: { success: true, space: fullSpace }
-                                }));
-                            }
-                        }
-                    }
+                    // 2. Broadcast to other relevant users (DB-backed, reliable)
+                    await broadcastToAuthorized(io, socket.id,
+                        { space_creating_status: { success: true, space: fullSpace } },
+                        fullSpace.category,
+                        fullSpace.owner._id.toString(),
+                        fullSpace.members.map(m => m._id.toString())
+                    );
                 } catch (e) {
                     console.error('Create space error:', e);
                     socket.emit('message', JSON.stringify({
@@ -1597,35 +1593,13 @@ io.on('connection', (socket) => {
                         space_renaming_status: { success: true, spaceId, newName }
                     }));
 
-                    // 2. Broadcast to other relevant users
-                    const sockets = await io.fetchSockets();
-                    for (const s of sockets) {
-                        if (s.id === socket.id) continue; // Skip requester
-
-                        if (s.userId) {
-                            const sUserRole = s.userRole; 
-                            const sUserId = s.userId;
-                            
-                            let canSee = false;
-                            
-                            if (space.category === 'personal') {
-                                canSee = (space.owner.toString() === sUserId);
-                            } else if (space.category === 'global') {
-                                canSee = true; 
-                            } else if (space.category === 'team') {
-                                const isOwner = space.owner.toString() === sUserId;
-                                const isMember = space.members.some(m => m.toString() === sUserId);
-                                // STRICT PRIVACY
-                                canSee = isOwner || isMember;
-                            }
-
-                            if (canSee) {
-                                s.emit('message', JSON.stringify({
-                                    space_renaming_status: { success: true, spaceId, newName }
-                                }));
-                            }
-                        }
-                    }
+                    // 2. Broadcast to other relevant users (DB-backed, reliable)
+                    await broadcastToAuthorized(io, socket.id,
+                        { space_renaming_status: { success: true, spaceId, newName } },
+                        space.category,
+                        space.owner.toString(),
+                        (space.members || []).map(m => m.toString())
+                    );
                 } catch (e) {
                     console.error('Rename space error:', e);
                 }
@@ -1666,35 +1640,13 @@ io.on('connection', (socket) => {
                         space_deleting_status: { success: true, spaceId: spaceId }
                     }));
 
-                    // 2. Broadcast to other relevant users
-                    const sockets = await io.fetchSockets();
-                    for (const s of sockets) {
-                        if (s.id === socket.id) continue; // Skip requester
-
-                        if (s.userId) {
-                            const sUserRole = s.userRole; 
-                            const sUserId = s.userId;
-                            
-                            let canSee = false;
-                            
-                            if (space.category === 'personal') {
-                                canSee = (space.owner.toString() === sUserId);
-                            } else if (space.category === 'global') {
-                                canSee = true; 
-                            } else if (space.category === 'team') {
-                                const isOwner = space.owner.toString() === sUserId;
-                                const isMember = space.members.some(m => m.toString() === sUserId);
-                                // STRICT PRIVACY
-                                canSee = isOwner || isMember;
-                            }
-
-                            if (canSee) {
-                                s.emit('message', JSON.stringify({
-                                    space_deleting_status: { success: true, spaceId: spaceId }
-                                }));
-                            }
-                        }
-                    }
+                    // 2. Broadcast to other relevant users (DB-backed, reliable)
+                    await broadcastToAuthorized(io, socket.id,
+                        { space_deleting_status: { success: true, spaceId: spaceId } },
+                        space.category,
+                        space.owner.toString(),
+                        (space.members || []).map(m => m.toString())
+                    );
                 } catch (e) {
                     console.error('Delete space error:', e);
                     socket.emit('message', JSON.stringify({
@@ -1839,44 +1791,21 @@ io.on('connection', (socket) => {
                         file_deleting_status: { success: true, fileId: fileId }
                     }));
 
-                    // 2. Broadcast to other relevant users
-                    const sockets = await io.fetchSockets();
-                    let associatedSpace = null;
-                    if (file.space) {
-                         associatedSpace = await Space.findById(file.space);
-                    }
-
-                    for (const s of sockets) {
-                        if (s.id === socket.id) continue; // Skip requester
-
-                        if (s.userId) {
-                             const sUserRole = s.userRole; 
-                             const sUserId = s.userId;
-                             let canSee = false;
-
-                             if (file.category === 'personal') {
-                                 canSee = (file.owner.toString() === sUserId);
-                             } else if (file.category === 'global') {
-                                 canSee = true;
-                             } else if (file.category === 'team') {
-                                const isFileOwner = file.owner.toString() === sUserId;
-                                // STRICT PRIVACY
-                                let isSpaceMember = false;
-                                let isSpaceOwner = false;
-                                if (associatedSpace) {
-                                    if (associatedSpace.members) isSpaceMember = associatedSpace.members.some(m => m.toString() === sUserId);
-                                    isSpaceOwner = associatedSpace.owner.toString() === sUserId;
-                                }
-                                canSee = isFileOwner || isSpaceMember || isSpaceOwner;
-                             }
-
-                             if (canSee) {
-                                s.emit('message', JSON.stringify({
-                                    file_deleting_status: { success: true, fileId: fileId }
-                                }));
-                             }
+                    // 2. Broadcast to other relevant users (DB-backed, reliable)
+                    let delMemberIds = [];
+                    if (file.category === 'team' && file.space) {
+                        const associatedSpace = await Space.findById(file.space);
+                        if (associatedSpace) {
+                            delMemberIds = (associatedSpace.members || []).map(m => m.toString());
+                            delMemberIds.push(associatedSpace.owner.toString());
                         }
                     }
+                    await broadcastToAuthorized(io, socket.id,
+                        { file_deleting_status: { success: true, fileId: fileId } },
+                        file.category,
+                        file.owner.toString(),
+                        delMemberIds
+                    );
                 } catch (e) {
                     console.error('Delete file error:', e);
                     socket.emit('message', JSON.stringify({
@@ -1919,44 +1848,21 @@ io.on('connection', (socket) => {
                         file_updating_status: { success: true, fileId, newName }
                     }));
 
-                    // 2. Broadcast to other relevant users
-                    const sockets = await io.fetchSockets();
-                    let associatedSpace = null;
-                    if (file.space) {
-                         associatedSpace = await Space.findById(file.space);
-                    }
-
-                    for (const s of sockets) {
-                        if (s.id === socket.id) continue; // Skip requester
-
-                        if (s.userId) {
-                             const sUserRole = s.userRole; 
-                             const sUserId = s.userId;
-                             let canSee = false;
-
-                             if (file.category === 'personal') {
-                                 canSee = (file.owner.toString() === sUserId);
-                             } else if (file.category === 'global') {
-                                 canSee = true;
-                             } else if (file.category === 'team') {
-                                const isFileOwner = file.owner.toString() === sUserId;
-                                // STRICT PRIVACY
-                                let isSpaceMember = false;
-                                let isSpaceOwner = false;
-                                if (associatedSpace) {
-                                    if (associatedSpace.members) isSpaceMember = associatedSpace.members.some(m => m.toString() === sUserId);
-                                    isSpaceOwner = associatedSpace.owner.toString() === sUserId;
-                                }
-                                canSee = isFileOwner || isSpaceMember || isSpaceOwner;
-                             }
-
-                             if (canSee) {
-                                s.emit('message', JSON.stringify({
-                                    file_updating_status: { success: true, fileId, newName }
-                                }));
-                             }
+                    // 2. Broadcast to other relevant users (DB-backed, reliable)
+                    let updateMemberIds = [];
+                    if (file.category === 'team' && file.space) {
+                        const associatedSpace = await Space.findById(file.space);
+                        if (associatedSpace) {
+                            updateMemberIds = (associatedSpace.members || []).map(m => m.toString());
+                            updateMemberIds.push(associatedSpace.owner.toString());
                         }
                     }
+                    await broadcastToAuthorized(io, socket.id,
+                        { file_updating_status: { success: true, fileId, newName } },
+                        file.category,
+                        file.owner.toString(),
+                        updateMemberIds
+                    );
                 } catch (e) {
                     console.error('Update file error:', e);
                 }

@@ -233,6 +233,10 @@ io.on('connection', (socket) => {
                      user.is_online = true;
                      user.last_connection = Date.now();
                      await user.save();
+
+                     // Store userId/userRole on socket for broadcast
+                     socket.userId = user._id.toString();
+                     socket.userRole = user.role;
                      
                      // Populate friendRequests to ensure recipient sees them on login
                      await user.populate('friendRequests', 'firstname email picture role');
@@ -264,6 +268,11 @@ io.on('connection', (socket) => {
                         user.is_online = true;
                         user.last_connection = Date.now();
                         await user.save();
+
+                        // Store userId/userRole on socket for broadcast
+                        socket.userId = user._id.toString();
+                        socket.userRole = user.role;
+
                         console.log(`User ${_id} (${user.firstname}) identified. Socket: ${socket.id}`);
                         broadcastUserOnlineStatus(_id, true);
                     }

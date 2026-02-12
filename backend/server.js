@@ -1189,7 +1189,25 @@ io.on('connection', (socket) => {
                         const isAdminOrTeacher = ['admin', 'enseignant'].includes(user.role);
                         const isGlobal = space.category === 'global';
 
-                        if (!isOwner && !isMember && !isAdminOrTeacher && !isGlobal) {
+                        let hasAccess = isOwner || isMember || isAdminOrTeacher || isGlobal;
+
+                        // Recursive check for parent permissions if not directly authorized
+                        if (!hasAccess && space.parent) {
+                            let currentParentId = space.parent;
+                            while (currentParentId) {
+                                const parentSpace = await Space.findById(currentParentId);
+                                if (!parentSpace) break;
+                                
+                                if (parentSpace.owner.toString() === userId || 
+                                    (parentSpace.members && parentSpace.members.some(id => id.toString() === userId))) {
+                                    hasAccess = true;
+                                    break;
+                                }
+                                currentParentId = parentSpace.parent;
+                            }
+                        }
+
+                        if (!hasAccess) {
                             return socket.emit('message', JSON.stringify({
                                 files: { success: false, error: 'Accès au dossier refusé' }
                             }));
@@ -1249,7 +1267,25 @@ io.on('connection', (socket) => {
                         const isMember = space.members && space.members.some(id => id.toString() === userId);
                         const isAdminOrTeacher = ['admin', 'enseignant'].includes(user.role);
 
-                        if (!isOwner && !isMember && !isAdminOrTeacher) {
+                        let hasAccess = isOwner || isMember || isAdminOrTeacher;
+
+                        // Recursive check
+                        if (!hasAccess && space.parent) {
+                            let currentParentId = space.parent;
+                            while (currentParentId) {
+                                const parentSpace = await Space.findById(currentParentId);
+                                if (!parentSpace) break;
+                                
+                                if (parentSpace.owner.toString() === userId || 
+                                    (parentSpace.members && parentSpace.members.some(id => id.toString() === userId))) {
+                                    hasAccess = true;
+                                    break;
+                                }
+                                currentParentId = parentSpace.parent;
+                            }
+                        }
+
+                        if (!hasAccess) {
                             return socket.emit('message', JSON.stringify({
                                 file_uploading_status: { success: false, error: 'Accès au dossier refusé' }
                             }));
@@ -1335,6 +1371,39 @@ io.on('connection', (socket) => {
                         return socket.emit('message', JSON.stringify({
                             space_creating_status: { success: false, error: 'Permission refusée' }
                         }));
+                    }
+
+                    // For sub-spaces, check parent permissions recursively
+                    if (parentId) {
+                        const parentSpace = await Space.findById(parentId);
+                        if (parentSpace) {
+                            const isOwner = parentSpace.owner.toString() === userId;
+                            const isMember = parentSpace.members && parentSpace.members.some(id => id.toString() === userId);
+                            const isAdminOrTeacher = ['admin', 'enseignant'].includes(user.role);
+                            
+                            let hasAccess = isOwner || isMember || isAdminOrTeacher;
+
+                            if (!hasAccess && parentSpace.parent) {
+                                let currentParentId = parentSpace.parent;
+                                while (currentParentId) {
+                                    const ancSpace = await Space.findById(currentParentId);
+                                    if (!ancSpace) break;
+                                    
+                                    if (ancSpace.owner.toString() === userId || 
+                                        (ancSpace.members && ancSpace.members.some(id => id.toString() === userId))) {
+                                        hasAccess = true;
+                                        break;
+                                    }
+                                    currentParentId = ancSpace.parent;
+                                }
+                            }
+
+                            if (!hasAccess && effectiveCategory !== 'global') {
+                                return socket.emit('message', JSON.stringify({
+                                    space_creating_status: { success: false, error: 'Permission refusée (parent)' }
+                                }));
+                            }
+                        }
                     }
                     console.log('CREATING SPACE:', { name, effectiveCategory, parentId });
 

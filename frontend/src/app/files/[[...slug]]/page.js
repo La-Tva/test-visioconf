@@ -415,7 +415,7 @@ export default function FilesPage() {
                 userId: currentUser._id,
                 category: targetSilo,
                 parentId: currentSpace?._id || null,
-                members: targetSilo === 'team' ? selectedMembers : []
+                members: (targetSilo === 'team' && !currentSpace) ? selectedMembers : []
             } 
         });
         setSelectedMembers([]);

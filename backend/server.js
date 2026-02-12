@@ -1489,12 +1489,21 @@ io.on('connection', (socket) => {
                     }
                     console.log('CREATING SPACE:', { name, effectiveCategory, parentId });
 
+                    // Determine members: if team sub-folder, inherit from parent.
+                    let finalMembers = members || [];
+                    if (parentId && effectiveCategory === 'team') {
+                         const parentSpace = await Space.findById(parentId);
+                         if (parentSpace && parentSpace.members) {
+                             finalMembers = parentSpace.members;
+                         }
+                    }
+
                     const newSpace = new Space({ 
                         name, 
                         owner: userId, 
                         category: effectiveCategory,
                         parent: parentId || null,
-                        members: members || [],
+                        members: finalMembers,
                         isPersonal: (effectiveCategory === 'personal')
                     });
                     await newSpace.save();

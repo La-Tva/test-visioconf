@@ -1301,9 +1301,42 @@ io.on('connection', (socket) => {
                     
                     const fullFile = await File.findById(newFile._id).populate('owner', 'firstname role');
 
-                    io.emit('message', JSON.stringify({
-                        file_uploading_status: { success: true, file: fullFile }
-                    }));
+                    // Broadcast only to relevant users
+                    const sockets = await io.fetchSockets();
+                    let associatedSpace = null;
+                    if (newFile.space) {
+                         associatedSpace = await Space.findById(newFile.space);
+                    }
+
+                    for (const s of sockets) {
+                        if (s.userId) {
+                            const sUserRole = s.userRole; 
+                            const sUserId = s.userId;
+                            let canSee = false; // Default deny
+
+                            if (fullFile.category === 'personal') {
+                                canSee = (fullFile.owner._id.toString() === sUserId);
+                            } else if (fullFile.category === 'global') {
+                                canSee = true; 
+                            } else if (fullFile.category === 'team') {
+                                const isFileOwner = fullFile.owner._id.toString() === sUserId;
+                                const isStaff = ['admin', 'enseignant'].includes(sUserRole);
+                                let isSpaceMember = false;
+                                let isSpaceOwner = false;
+                                if (associatedSpace) {
+                                    if (associatedSpace.members) isSpaceMember = associatedSpace.members.some(m => m.toString() === sUserId);
+                                    isSpaceOwner = associatedSpace.owner.toString() === sUserId;
+                                }
+                                canSee = isFileOwner || isStaff || isSpaceMember || isSpaceOwner;
+                            }
+
+                            if (canSee) {
+                                s.emit('message', JSON.stringify({
+                                    file_uploading_status: { success: true, file: fullFile }
+                                }));
+                            }
+                        }
+                    }
                 } catch (e) {
                     console.error('Upload file error:', e);
                     socket.emit('message', JSON.stringify({
@@ -1421,9 +1454,39 @@ io.on('connection', (socket) => {
                         .populate('members', 'firstname role')
                         .populate('owner', 'firstname role');
 
-                    io.emit('message', JSON.stringify({
-                        space_creating_status: { success: true, space: fullSpace }
-                    }));
+                    // Broadcast only to relevant users
+                    const sockets = await io.fetchSockets();
+                    for (const s of sockets) {
+                        if (s.userId) {
+                            // Check if this user should see the space
+                            // 1. Owner
+                            // 2. Member
+                            // 3. Admin/Teacher (if not personal)
+                            // 4. Global space (if they have access to global)
+                            
+                            const sUserRole = s.userRole; 
+                            const sUserId = s.userId;
+                            
+                            let canSee = false;
+                            
+                            if (fullSpace.category === 'personal') {
+                                canSee = (fullSpace.owner._id.toString() === sUserId);
+                            } else if (fullSpace.category === 'global') {
+                                canSee = true; // Simplified, assuming global is public or role-based checked elsewhere
+                            } else if (fullSpace.category === 'team') {
+                                const isOwner = fullSpace.owner._id.toString() === sUserId;
+                                const isMember = fullSpace.members.some(m => m._id.toString() === sUserId);
+                                const isStaff = ['admin', 'enseignant'].includes(sUserRole);
+                                canSee = isOwner || isMember || isStaff;
+                            }
+
+                            if (canSee) {
+                                s.emit('message', JSON.stringify({
+                                    space_creating_status: { success: true, space: fullSpace }
+                                }));
+                            }
+                        }
+                    }
                 } catch (e) {
                     console.error('Create space error:', e);
                     socket.emit('message', JSON.stringify({
@@ -1451,9 +1514,33 @@ io.on('connection', (socket) => {
                     space.name = newName;
                     await space.save();
 
-                    io.emit('message', JSON.stringify({
-                        space_renaming_status: { success: true, spaceId, newName }
-                    }));
+                    // Broadcast only to relevant users
+                    const sockets = await io.fetchSockets();
+                    for (const s of sockets) {
+                        if (s.userId) {
+                            const sUserRole = s.userRole; 
+                            const sUserId = s.userId;
+                            
+                            let canSee = false;
+                            
+                            if (space.category === 'personal') {
+                                canSee = (space.owner.toString() === sUserId);
+                            } else if (space.category === 'global') {
+                                canSee = true; 
+                            } else if (space.category === 'team') {
+                                const isOwner = space.owner.toString() === sUserId;
+                                const isMember = space.members.some(m => m.toString() === sUserId);
+                                const isStaff = ['admin', 'enseignant'].includes(sUserRole);
+                                canSee = isOwner || isMember || isStaff;
+                            }
+
+                            if (canSee) {
+                                s.emit('message', JSON.stringify({
+                                    space_renaming_status: { success: true, spaceId, newName }
+                                }));
+                            }
+                        }
+                    }
                 } catch (e) {
                     console.error('Rename space error:', e);
                 }
@@ -1480,10 +1567,33 @@ io.on('connection', (socket) => {
                     await File.updateMany({ space: spaceId }, { $unset: { space: "" } });
                     await Space.findByIdAndDelete(spaceId);
                     
-                    // Broadcast success
-                    io.emit('message', JSON.stringify({
-                        space_deleting_status: { success: true, spaceId: spaceId }
-                    }));
+                    // Broadcast only to relevant users
+                    const sockets = await io.fetchSockets();
+                    for (const s of sockets) {
+                        if (s.userId) {
+                            const sUserRole = s.userRole; 
+                            const sUserId = s.userId;
+                            
+                            let canSee = false;
+                            
+                            if (space.category === 'personal') {
+                                canSee = (space.owner.toString() === sUserId);
+                            } else if (space.category === 'global') {
+                                canSee = true; 
+                            } else if (space.category === 'team') {
+                                const isOwner = space.owner.toString() === sUserId;
+                                const isMember = space.members.some(m => m.toString() === sUserId);
+                                const isStaff = ['admin', 'enseignant'].includes(sUserRole);
+                                canSee = isOwner || isMember || isStaff;
+                            }
+
+                            if (canSee) {
+                                s.emit('message', JSON.stringify({
+                                    space_deleting_status: { success: true, spaceId: spaceId }
+                                }));
+                            }
+                        }
+                    }
                 } catch (e) {
                     console.error('Delete space error:', e);
                     socket.emit('message', JSON.stringify({
@@ -1609,10 +1719,43 @@ io.on('connection', (socket) => {
                     }
 
                     await File.findByIdAndDelete(fileId);
-                    // Broadcast to ALL users so the file disappears for everyone immediately
-                    io.emit('message', JSON.stringify({
-                        file_deleting_status: { success: true, fileId: fileId }
-                    }));
+                    
+                    // Broadcast only to relevant users
+                    const sockets = await io.fetchSockets();
+                    let associatedSpace = null;
+                    if (file.space) {
+                         associatedSpace = await Space.findById(file.space);
+                    }
+
+                    for (const s of sockets) {
+                        if (s.userId) {
+                             const sUserRole = s.userRole; 
+                             const sUserId = s.userId;
+                             let canSee = false;
+
+                             if (file.category === 'personal') {
+                                 canSee = (file.owner.toString() === sUserId);
+                             } else if (file.category === 'global') {
+                                 canSee = true;
+                             } else if (file.category === 'team') {
+                                const isFileOwner = file.owner.toString() === sUserId;
+                                const isStaff = ['admin', 'enseignant'].includes(sUserRole);
+                                let isSpaceMember = false;
+                                let isSpaceOwner = false;
+                                if (associatedSpace) {
+                                    if (associatedSpace.members) isSpaceMember = associatedSpace.members.some(m => m.toString() === sUserId);
+                                    isSpaceOwner = associatedSpace.owner.toString() === sUserId;
+                                }
+                                canSee = isFileOwner || isStaff || isSpaceMember || isSpaceOwner;
+                             }
+
+                             if (canSee) {
+                                s.emit('message', JSON.stringify({
+                                    file_deleting_status: { success: true, fileId: fileId }
+                                }));
+                             }
+                        }
+                    }
                 } catch (e) {
                     console.error('Delete file error:', e);
                     socket.emit('message', JSON.stringify({

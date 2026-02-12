@@ -25,6 +25,16 @@ export default function FilesPage() {
     const filesCompRef = useRef(null);
     const lastTabChangeRef = useRef(0);
 
+    // === REFS to avoid stale closures in socket handler ===
+    const targetSiloRef = useRef(targetSilo);
+    const currentSpaceRef = useRef(currentSpace);
+    const currentUserRef = useRef(currentUser);
+    const activeTabRef = useRef(activeTab);
+    useEffect(() => { targetSiloRef.current = targetSilo; }, [targetSilo]);
+    useEffect(() => { currentSpaceRef.current = currentSpace; }, [currentSpace]);
+    useEffect(() => { currentUserRef.current = currentUser; }, [currentUser]);
+    useEffect(() => { activeTabRef.current = activeTab; }, [activeTab]);
+
     // Modals & Upload States
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
     const [isSpaceModalOpen, setIsSpaceModalOpen] = useState(false);
@@ -61,6 +71,12 @@ export default function FilesPage() {
         const filesComp = {
             nomDInstance: "FilesComponent",
             traitementMessage: (msg) => {
+                // === READ CURRENT VALUES FROM REFS (avoids stale closures) ===
+                const _targetSilo = targetSiloRef.current;
+                const _currentSpace = currentSpaceRef.current;
+                const _currentUser = currentUserRef.current;
+                const _activeTab = activeTabRef.current;
+
                 const authMsg = msg['auth_status'] || msg['auth status'];
                 if (authMsg && authMsg.success) {
                     const updatedUser = authMsg.user;
@@ -75,13 +91,10 @@ export default function FilesPage() {
 
                 if (msg.spaces) {
                     const data = msg.spaces;
-                    // Always update rootSpaces for the top bar
                     if (data.parentId === null) {
                         setRootSpaces(data.spaces || []);
                     }
-                    
-                    // Only update the grid if it matches our current level
-                    const requestedId = currentSpace?._id || null;
+                    const requestedId = _currentSpace?._id || null;
                     if (data.parentId === requestedId) {
                         setSpaces(data.spaces || []);
                     }
@@ -90,21 +103,15 @@ export default function FilesPage() {
                 if (msg.file_uploading_status) {
                     if (msg.file_uploading_status.success) {
                         const newFile = msg.file_uploading_status.file;
-                        // Only add if it belongs to current view (same category and same space/folder)
-                        const isSameCategory = newFile.category === targetSilo;
-                        
-                        // Check space match (handle null/undefined for root)
-                        const currentSpaceId = currentSpace?._id || null;
+                        const isSameCategory = newFile.category === _targetSilo;
+                        const currentSpaceId = _currentSpace?._id || null;
                         const fileSpaceId = newFile.space || null;
                         const isSameSpace = currentSpaceId === fileSpaceId;
-
-                        // CRITICAL: For personal files, check owner!
                         let isAuthorized = true;
                         if (newFile.category === 'personal') {
-                            const ownerId = newFile.owner?._id || newFile.owner; // Handle populated or raw ID
-                            isAuthorized = ownerId === currentUser._id;
+                            const ownerId = newFile.owner?._id || newFile.owner;
+                            isAuthorized = ownerId === _currentUser._id;
                         }
-
                         if (isSameCategory && isSameSpace && isAuthorized) {
                             setFiles(prev => [newFile, ...prev]);
                             handleCloseUploadModal();
@@ -115,7 +122,6 @@ export default function FilesPage() {
                     }
                 }
 
-                const delMsg = msg['file_deleting_status'] || msg['file deleting status'];
                 if (msg.file_deleting_status || msg.fileDeletingStatus) {
                     const status = msg.file_deleting_status || msg.fileDeletingStatus;
                     if (status.success) {
@@ -127,21 +133,15 @@ export default function FilesPage() {
                 if (msg.space_creating_status) {
                     if (msg.space_creating_status.success) {
                         const newSpace = msg.space_creating_status.space;
-                        // Filter by category
-                        const isSameCategory = newSpace.category === targetSilo;
-                        
-                        // Filter by parent (currentSpace)
-                        const currentSpaceId = currentSpace?._id || null;
+                        const isSameCategory = newSpace.category === _targetSilo;
+                        const currentSpaceId = _currentSpace?._id || null;
                         const spaceParentId = newSpace.parent || null;
                         const isSameParent = currentSpaceId === spaceParentId;
-
-                        // CRITICAL: For personal spaces, check owner!
                         let isAuthorized = true;
                         if (newSpace.category === 'personal') {
                             const ownerId = newSpace.owner?._id || newSpace.owner;
-                            isAuthorized = ownerId === currentUser._id;
+                            isAuthorized = ownerId === _currentUser._id;
                         }
-
                         if (isSameCategory && isSameParent && isAuthorized) {
                             setSpaces(prev => [...prev, newSpace]);
                             setIsSpaceModalOpen(false);
@@ -156,7 +156,7 @@ export default function FilesPage() {
                 if (msg.space_deleting_status) {
                     if (msg.space_deleting_status.success) {
                         setSpaces(prev => prev.filter(s => s._id !== msg.space_deleting_status.spaceId));
-                        if (currentSpace?._id === msg.space_deleting_status.spaceId) {
+                        if (_currentSpace?._id === msg.space_deleting_status.spaceId) {
                             handleBreadcrumbClick(null, -1);
                         }
                     } else {
@@ -182,15 +182,12 @@ export default function FilesPage() {
                         setPath(msg.resolved_path.path);
                         const finalSpace = msg.resolved_path.path[msg.resolved_path.path.length - 1];
                         setCurrentSpace(finalSpace);
-                        
-                        // Sync tab if it was resolved in a different category (e.g. via deep link)
-                        if (msg.resolved_path.category && msg.resolved_path.category !== activeTab) {
+                        if (msg.resolved_path.category && msg.resolved_path.category !== _activeTab) {
                             setActiveTab(msg.resolved_path.category);
-                            const isStaff = ['admin', 'enseignant'].includes(currentUser?.role);
+                            const isStaff = ['admin', 'enseignant'].includes(_currentUser?.role);
                             const newTarget = msg.resolved_path.category === 'global' && !isStaff ? 'personal' : msg.resolved_path.category;
                             setTargetSilo(newTarget);
                         }
-                        // If path resolution is done and it's root or no files expected immediately, stop loading
                         if (msg.resolved_path.path.length === 0) setLoading(false);
                     } else {
                         setCurrentSpace(null);
@@ -203,17 +200,17 @@ export default function FilesPage() {
         filesCompRef.current = filesComp;
         
         controleur.inscription(filesComp, 
-            ['get_files', 'upload_file', 'delete_file', 'get_spaces', 'create_space', 'delete_space', 'rename_space', 'resolve_path'], 
-            ['files', 'file_uploading_status', 'fileDeletingStatus', 'file_deleting_status', 'file deleting status', 'auth status', 'auth_status', 'spaces', 'space_creating_status', 'space_deleting_status', 'space_renaming_status', 'resolved_path']
+            ['get_files', 'upload_file', 'delete_file', 'update_file', 'get_spaces', 'create_space', 'delete_space', 'rename_space', 'resolve_path'], 
+            ['files', 'file_uploading_status', 'fileDeletingStatus', 'file_deleting_status', 'file deleting status', 'file_updating_status', 'auth status', 'auth_status', 'spaces', 'space_creating_status', 'space_deleting_status', 'space_renaming_status', 'resolved_path']
         );
 
         return () => {
              controleur.desincription(filesComp, 
-                ['get_files', 'upload_file', 'delete_file', 'get_spaces', 'create_space', 'delete_space', 'rename_space', 'resolve_path'], 
-                ['files', 'file_uploading_status', 'fileDeletingStatus', 'file_deleting_status', 'file deleting status', 'auth status', 'auth_status', 'spaces', 'space_creating_status', 'space_deleting_status', 'space_renaming_status', 'resolved_path']
+                ['get_files', 'upload_file', 'delete_file', 'update_file', 'get_spaces', 'create_space', 'delete_space', 'rename_space', 'resolve_path'], 
+                ['files', 'file_uploading_status', 'fileDeletingStatus', 'file_deleting_status', 'file deleting status', 'file_updating_status', 'auth status', 'auth_status', 'spaces', 'space_creating_status', 'space_deleting_status', 'space_renaming_status', 'resolved_path']
             );
         };
-    }, [controleur, isReady, !!currentUser, activeTab, targetSilo, currentSpace?._id, isHydrated]);
+    }, [controleur, isReady, !!currentUser]);
 
     useEffect(() => {
         if (!isReady || !currentUser || !isHydrated) return;
@@ -318,6 +315,12 @@ export default function FilesPage() {
 
     const handleFileSelect = (file) => {
         if (!file) return;
+        // 500MB limit
+        const MAX_SIZE = 500 * 1024 * 1024;
+        if (file.size > MAX_SIZE) {
+            alert(`Le fichier est trop volumineux (${formatSize(file.size)}). Taille maximale : 500 MB.`);
+            return;
+        }
         setUploadingFile(file);
         if (file.type.startsWith('image/')) {
             const url = URL.createObjectURL(file);
@@ -711,7 +714,7 @@ export default function FilesPage() {
 
                         {/* Files */}
                         {filteredFiles.map(file => (
-                            <div key={file._id} className={styles.card}>
+                            <div key={file._id} className={styles.card} onClick={() => setPreviewFile(file)} style={{ cursor: 'pointer' }}>
                                 <div className={styles.iconWrapper}>
                                     {file.type.startsWith('image/') ? (
                                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 17 16 12 5 21"></polyline></svg>
@@ -851,24 +854,35 @@ export default function FilesPage() {
 
             {previewFile && (
                 <div className={styles.modalOverlay} onClick={() => setPreviewFile(null)}>
-                    <div className={styles.modal} style={{ maxWidth: '80vw', maxHeight: '80vh', display: 'flex', flexDirection: 'column', alignItems: 'center' }} onClick={e => e.stopPropagation()}>
-                        <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
-                            <h2 className={styles.modalTitle} style={{ margin: 0 }}>{previewFile.name}</h2>
-                            <button onClick={() => setPreviewFile(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748B' }}>
+                    <div className={styles.modal} style={{ maxWidth: '85vw', maxHeight: '85vh', display: 'flex', flexDirection: 'column', alignItems: 'center' }} onClick={e => e.stopPropagation()}>
+                        <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                            <h2 className={styles.modalTitle} style={{ margin: 0, fontSize: '16px' }}>{previewFile.name}</h2>
+                            <button onClick={() => setPreviewFile(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748B', padding: '4px' }}>
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                             </button>
                         </div>
-                        <div style={{ width: '100%', flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'hidden', background: '#F8FAFC', borderRadius: '12px' }}>
+                        <div style={{ width: '100%', flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'auto', background: '#F8FAFC', borderRadius: '12px', minHeight: '200px' }}>
                             {previewFile.type.startsWith('image/') ? (
-                                <img src={previewFile.url} alt={previewFile.name} style={{ maxWidth: '100%', maxHeight: '60vh', objectFit: 'contain' }} />
+                                <img src={previewFile.url} alt={previewFile.name} style={{ maxWidth: '100%', maxHeight: '65vh', objectFit: 'contain' }} />
+                            ) : previewFile.type.startsWith('video/') ? (
+                                <video controls style={{ maxWidth: '100%', maxHeight: '65vh' }}><source src={previewFile.url} type={previewFile.type} /></video>
+                            ) : previewFile.type.startsWith('audio/') ? (
+                                <div style={{ padding: '40px', textAlign: 'center' }}>
+                                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#6366F1" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
+                                    <audio controls style={{ marginTop: '20px', width: '100%' }}><source src={previewFile.url} type={previewFile.type} /></audio>
+                                </div>
+                            ) : previewFile.type === 'application/pdf' ? (
+                                <iframe src={previewFile.url} style={{ width: '100%', height: '65vh', border: 'none', borderRadius: '8px' }} title={previewFile.name} />
                             ) : (
                                 <div style={{ textAlign: 'center', padding: '40px' }}>
                                     <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#64748B" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg>
-                                    <p style={{ marginTop: '16px', color: '#64748B' }}>Prévisualisation non disponible pour ce type de fichier.</p>
+                                    <p style={{ marginTop: '16px', color: '#64748B', fontSize: '14px' }}>{previewFile.name}</p>
+                                    <p style={{ color: '#94A3B8', fontSize: '13px' }}>{formatSize(previewFile.size)} • {previewFile.type}</p>
                                 </div>
                             )}
                         </div>
-                        <div className={styles.modalActions} style={{ width: '100%', marginTop: '20px' }}>
+                        <div className={styles.modalActions} style={{ width: '100%', marginTop: '16px' }}>
+                            <button className={styles.cancelBtn} onClick={() => setPreviewFile(null)}>Fermer</button>
                             <button className={styles.submitBtn} onClick={() => handleDownload(previewFile)}>Télécharger</button>
                         </div>
                     </div>

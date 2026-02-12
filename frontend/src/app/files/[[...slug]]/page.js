@@ -77,6 +77,8 @@ export default function FilesPage() {
                 const _currentUser = currentUserRef.current;
                 const _activeTab = activeTabRef.current;
 
+                console.log('[FilesComponent] 📨 Received message:', Object.keys(msg), 'refs:', { _targetSilo, _activeTab, _currentSpaceId: _currentSpace?._id || null });
+
                 const authMsg = msg['auth_status'] || msg['auth status'];
                 if (authMsg && authMsg.success) {
                     const updatedUser = authMsg.user;
@@ -85,12 +87,14 @@ export default function FilesPage() {
                 }
                 
                 if (msg.files) {
+                    console.log('[FilesComponent] ✅ Got files list:', msg.files.files?.length);
                     setFiles(msg.files.files || []);
                     setLoading(false);
                 }
 
                 if (msg.spaces) {
                     const data = msg.spaces;
+                    console.log('[FilesComponent] ✅ Got spaces:', data.spaces?.length, 'parentId:', data.parentId, 'currentSpaceId:', _currentSpace?._id || null);
                     if (data.parentId === null) {
                         setRootSpaces(data.spaces || []);
                     }
@@ -101,6 +105,7 @@ export default function FilesPage() {
                 }
                 
                 if (msg.file_uploading_status) {
+                    console.log('[FilesComponent] 📤 file_uploading_status received:', msg.file_uploading_status);
                     if (msg.file_uploading_status.success) {
                         const newFile = msg.file_uploading_status.file;
                         const isSameCategory = newFile.category === _targetSilo;
@@ -112,9 +117,12 @@ export default function FilesPage() {
                             const ownerId = newFile.owner?._id || newFile.owner;
                             isAuthorized = ownerId === _currentUser._id;
                         }
+                        console.log('[FilesComponent] 📤 upload filter:', { isSameCategory, isSameSpace, isAuthorized, fileCategory: newFile.category, _targetSilo, fileSpaceId, currentSpaceId });
                         if (isSameCategory && isSameSpace && isAuthorized) {
                             setFiles(prev => [newFile, ...prev]);
                             handleCloseUploadModal();
+                        } else {
+                            console.warn('[FilesComponent] ⚠️ Upload event FILTERED OUT!');
                         }
                     } else {
                         alert("Erreur upload: " + msg.file_uploading_status.error);
@@ -124,6 +132,7 @@ export default function FilesPage() {
 
                 if (msg.file_deleting_status || msg.fileDeletingStatus) {
                     const status = msg.file_deleting_status || msg.fileDeletingStatus;
+                    console.log('[FilesComponent] 🗑️ file_deleting_status:', status);
                     if (status.success) {
                         setFiles(prev => prev.filter(f => f._id !== status.fileId));
                     }
@@ -131,6 +140,7 @@ export default function FilesPage() {
                 }
 
                 if (msg.space_creating_status) {
+                    console.log('[FilesComponent] 📁 space_creating_status received:', msg.space_creating_status);
                     if (msg.space_creating_status.success) {
                         const newSpace = msg.space_creating_status.space;
                         const isSameCategory = newSpace.category === _targetSilo;
@@ -142,10 +152,13 @@ export default function FilesPage() {
                             const ownerId = newSpace.owner?._id || newSpace.owner;
                             isAuthorized = ownerId === _currentUser._id;
                         }
+                        console.log('[FilesComponent] 📁 create filter:', { isSameCategory, isSameParent, isAuthorized, spaceCategory: newSpace.category, _targetSilo, spaceParentId, currentSpaceId });
                         if (isSameCategory && isSameParent && isAuthorized) {
                             setSpaces(prev => [...prev, newSpace]);
                             setIsSpaceModalOpen(false);
                             setNewSpaceName('');
+                        } else {
+                            console.warn('[FilesComponent] ⚠️ Create space event FILTERED OUT!');
                         }
                     } else {
                         alert("Erreur espace: " + msg.space_creating_status.error);
@@ -154,6 +167,7 @@ export default function FilesPage() {
                 }
 
                 if (msg.space_deleting_status) {
+                    console.log('[FilesComponent] 🗑️ space_deleting_status:', msg.space_deleting_status);
                     if (msg.space_deleting_status.success) {
                         setSpaces(prev => prev.filter(s => s._id !== msg.space_deleting_status.spaceId));
                         if (_currentSpace?._id === msg.space_deleting_status.spaceId) {
@@ -166,18 +180,21 @@ export default function FilesPage() {
                 }
 
                 if (msg.space_renaming_status) {
+                    console.log('[FilesComponent] ✏️ space_renaming_status:', msg.space_renaming_status);
                     if (msg.space_renaming_status.success) {
                         setSpaces(prev => prev.map(s => s._id === msg.space_renaming_status.spaceId ? { ...s, name: msg.space_renaming_status.newName } : s));
                     }
                     setLoading(false);
                 }
                 if (msg.file_updating_status) {
+                    console.log('[FilesComponent] ✏️ file_updating_status:', msg.file_updating_status);
                     if (msg.file_updating_status.success) {
                         setFiles(prev => prev.map(f => f._id === msg.file_updating_status.fileId ? { ...f, name: msg.file_updating_status.newName } : f));
                     }
                     setLoading(false);
                 }
                 if (msg.resolved_path) {
+                    console.log('[FilesComponent] 🔗 resolved_path:', msg.resolved_path);
                     if (msg.resolved_path.success) {
                         setPath(msg.resolved_path.path);
                         const finalSpace = msg.resolved_path.path[msg.resolved_path.path.length - 1];

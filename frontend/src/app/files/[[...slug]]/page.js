@@ -98,7 +98,14 @@ export default function FilesPage() {
                         const fileSpaceId = newFile.space || null;
                         const isSameSpace = currentSpaceId === fileSpaceId;
 
-                        if (isSameCategory && isSameSpace) {
+                        // CRITICAL: For personal files, check owner!
+                        let isAuthorized = true;
+                        if (newFile.category === 'personal') {
+                            const ownerId = newFile.owner?._id || newFile.owner; // Handle populated or raw ID
+                            isAuthorized = ownerId === currentUser._id;
+                        }
+
+                        if (isSameCategory && isSameSpace && isAuthorized) {
                             setFiles(prev => [newFile, ...prev]);
                             handleCloseUploadModal();
                         }
@@ -128,7 +135,14 @@ export default function FilesPage() {
                         const spaceParentId = newSpace.parent || null;
                         const isSameParent = currentSpaceId === spaceParentId;
 
-                        if (isSameCategory && isSameParent) {
+                        // CRITICAL: For personal spaces, check owner!
+                        let isAuthorized = true;
+                        if (newSpace.category === 'personal') {
+                            const ownerId = newSpace.owner?._id || newSpace.owner;
+                            isAuthorized = ownerId === currentUser._id;
+                        }
+
+                        if (isSameCategory && isSameParent && isAuthorized) {
                             setSpaces(prev => [...prev, newSpace]);
                             setIsSpaceModalOpen(false);
                             setNewSpaceName('');
@@ -199,7 +213,7 @@ export default function FilesPage() {
                 ['files', 'file_uploading_status', 'fileDeletingStatus', 'file_deleting_status', 'file deleting status', 'auth status', 'auth_status', 'spaces', 'space_creating_status', 'space_deleting_status', 'space_renaming_status', 'resolved_path']
             );
         };
-    }, [controleur, isReady, !!currentUser, activeTab, currentSpace?._id, isHydrated]);
+    }, [controleur, isReady, !!currentUser, activeTab, targetSilo, currentSpace?._id, isHydrated]);
 
     useEffect(() => {
         if (!isReady || !currentUser || !isHydrated) return;

@@ -64,14 +64,14 @@ export default function Sidebar() {
             {/* Mobile Header / Hamburger - Only visible on small screens via CSS */}
             {/* Mobile Header - Simplified (Drawer replaced by BottomNav) */}
             <div className={styles.mobileHeader}>
-                <div className={styles.mobileLogo}>
+                <Link href="/home" className={styles.mobileLogo} style={{ textDecoration: 'none', color: 'inherit' }}>
                     <svg width="24" height="24" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <rect x="2" y="6" width="20" height="4" rx="2" fill="#0698D6"/>
                         <rect x="2" y="14" width="28" height="4" rx="2" fill="#1E3664"/>
                         <rect x="10" y="22" width="20" height="4" rx="2" fill="#0698D6"/>
                     </svg>
                     <span className={styles.mobileTitle}>VISIOCONF</span>
-                </div>
+                </Link>
                 
                 {user && (
                     <Link href="/profile" className={styles.mobileProfileLink}>

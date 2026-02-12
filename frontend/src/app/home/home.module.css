@@ -777,7 +777,7 @@
 @media (max-width: 768px) {
     .container {
         padding: 1.25rem;
-        padding-top: 4.5rem;
+        padding-top: 10px;
         padding-bottom: 85px;
     }
 
@@ -861,7 +861,22 @@
     }
 
     .topHeader {
-        margin-bottom: 1rem;
+        display: none;
+    }
+
+    .teamAvatar {
+        width: 44px;
+        height: 44px;
+        border-radius: 14px;
+    }
+
+    .listName {
+        font-size: 0.65rem;
+        max-width: 55px;
+    }
+
+    .teamsGrid {
+        gap: 10px;
     }
 }
 

@@ -829,30 +829,139 @@
     }
 }
 
+/* Mobile Silo Bar - Hidden on desktop */
+.mobileSiloBar {
+    display: none;
+}
+
+.mobileSiloTab {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 16px;
+    border-radius: 12px;
+    border: none;
+    background: transparent;
+    color: #64748B;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.mobileSiloActive {
+    background: #0F172A;
+    color: white;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);
+}
+
+.mobileSiloTab:not(.mobileSiloActive):hover {
+    background: #F1F5F9;
+    color: #0F172A;
+}
+
 @media (max-width: 768px) {
+    .sidebar {
+        display: none;
+    }
+
+    .mobileSiloBar {
+        display: flex;
+        gap: 6px;
+        background: #F1F5F9;
+        padding: 4px;
+        border-radius: 14px;
+        margin-bottom: 16px;
+        position: sticky;
+        top: 56px;
+        z-index: 20;
+    }
+
+    .mobileSiloTab {
+        flex: 1;
+        justify-content: center;
+        padding: 8px 10px;
+        font-size: 12px;
+        border-radius: 10px;
+    }
+
     .container {
-        padding: 24px 20px 80px 20px;
+        padding: 16px 14px 90px 14px;
+        padding-top: 10px;
     }
 
     .header {
         flex-direction: column;
         align-items: flex-start;
-        gap: 20px;
-        margin-bottom: 32px;
+        gap: 14px;
+        margin-bottom: 16px;
+        padding: 16px;
+        border-radius: 16px;
     }
 
     .title {
-        font-size: 24px;
+        font-size: 22px;
+    }
+
+    .breadcrumbBar {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        max-width: 100%;
+    }
+
+    .breadcrumbBar::-webkit-scrollbar {
+        display: none;
+    }
+
+    .breadcrumbItem {
+        font-size: 12px;
+        padding: 4px 8px;
+    }
+
+    .headerActions {
+        flex-wrap: wrap;
+        gap: 8px;
+        width: 100%;
+    }
+
+    .createSpaceBtn {
+        padding: 10px 14px;
+        font-size: 12px;
+        border-radius: 12px;
+        gap: 6px;
+    }
+
+    .uploadBtn {
+        padding: 10px 14px;
+        font-size: 12px;
+        border-radius: 12px;
+        gap: 6px;
     }
 
     .filterContainer {
         flex-direction: column;
-        gap: 16px;
-        padding: 12px;
+        gap: 10px;
+        padding: 10px;
+        margin-bottom: 16px;
+        border-radius: 14px;
     }
 
     .filterActions {
         max-width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+
+    .filterActions::-webkit-scrollbar {
+        display: none;
+    }
+
+    .filterBtn {
+        font-size: 12px;
+        padding: 6px 12px;
     }
 
     .searchWrapper {
@@ -860,11 +969,104 @@
     }
 
     .grid {
-        grid-template-columns: 1fr;
-        gap: 16px;
+        gap: 8px;
     }
 
     .card {
-        padding: 24px;
+        padding: 10px 14px;
+        border-radius: 14px;
+    }
+
+    .iconWrapper {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        margin-right: 12px;
+    }
+
+    .name {
+        font-size: 13px;
+    }
+
+    .meta {
+        font-size: 11px;
+    }
+
+    .ownerInfo {
+        display: none;
+    }
+
+    .actionBtn {
+        width: 32px;
+        height: 32px;
+    }
+
+    /* Modal adjustments */
+    .modalOverlay {
+        padding: 16px;
+    }
+
+    .modal {
+        width: 100%;
+        max-width: 100%;
+        border-radius: 20px;
+        padding: 20px;
+    }
+
+    .modalActions {
+        flex-direction: column;
+    }
+
+    .submitBtn,
+    .cancelBtn {
+        width: 100%;
+        text-align: center;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .container {
+        padding: 12px 10px 90px 10px;
+        padding-top: 20px;
+    }
+
+    .mobileSiloTab {
+        font-size: 11px;
+        padding: 7px 6px;
+        gap: 4px;
+    }
+
+    .mobileSiloTab svg {
+        width: 14px;
+        height: 14px;
+    }
+
+    .header {
+        padding: 12px;
+    }
+
+    .title {
+        font-size: 18px;
+    }
+
+    .headerActions {
+        flex-direction: column;
+    }
+
+    .createSpaceBtn,
+    .uploadBtn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .card {
+        padding: 8px 12px;
+    }
+
+    .iconWrapper {
+        width: 32px;
+        height: 32px;
+        margin-right: 10px;
     }
 }

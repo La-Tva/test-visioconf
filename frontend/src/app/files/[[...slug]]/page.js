@@ -493,6 +493,30 @@ export default function FilesPage() {
             </aside>
 
             <div className={styles.container}>
+                {/* Mobile silo tabs - visible only on mobile via CSS */}
+                <div className={styles.mobileSiloBar}>
+                    <button 
+                        className={`${styles.mobileSiloTab} ${activeTab === 'personal' ? styles.mobileSiloActive : ''}`}
+                        onClick={() => handleTabChange('personal')}
+                    >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                        Privée
+                    </button>
+                    <button 
+                        className={`${styles.mobileSiloTab} ${activeTab === 'global' ? styles.mobileSiloActive : ''}`}
+                        onClick={() => handleTabChange('global')}
+                    >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                        Commun
+                    </button>
+                    <button 
+                        className={`${styles.mobileSiloTab} ${activeTab === 'team' ? styles.mobileSiloActive : ''}`}
+                        onClick={() => handleTabChange('team')}
+                    >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><polyline points="16 11 18 13 22 9"></polyline></svg>
+                        Équipe
+                    </button>
+                </div>
                 <div className={styles.header}>
                     <div className={styles.breadcrumbBar}>
                         <button className={styles.breadcrumbItem} onClick={() => handleBreadcrumbClick(null, -1)}>

@@ -114,6 +114,9 @@
     font-weight: 700;
     cursor: pointer;
     transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
 }
 
 .removeBtn:hover {
@@ -285,7 +288,7 @@
 
     .sidebar {
         width: 100%;
-        padding-top: 3.5rem;
+        padding-top: 10px;
         border-right: none;
         background: #F8FAFC;
         /* Simplified for performance on mobile */
@@ -933,7 +936,70 @@
     }
 
     .removeBtn {
-        padding: 6px 12px;
-        font-size: 11px;
+        padding: 0;
+        width: 32px;
+        height: 32px;
+        min-width: 32px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0;
+        margin-left: 0;
+    }
+
+    .removeBtn svg {
+        width: 14px;
+        height: 14px;
+    }
+
+    .callActionBtn {
+        padding: 0;
+        width: 32px;
+        height: 32px;
+        min-width: 32px;
+        border-radius: 50%;
+        gap: 0;
+        box-shadow: none;
+        background: #EDF2FF;
+        color: #3B82F6;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .callActionBtn svg {
+        width: 15px;
+        height: 15px;
+    }
+
+    .btnLabel {
+        display: none;
+    }
+
+    .roleBadge {
+        display: none;
+    }
+
+    .mobileBackBtn {
+        width: 32px !important;
+        height: 32px !important;
+    }
+
+    .mobileBackBtn svg {
+        width: 18px;
+        height: 18px;
+    }
+
+    .headerAvatar {
+        width: 28px;
+        height: 28px;
+    }
+
+    .chatTitle {
+        font-size: 13px;
+        gap: 6px;
+        flex: 1;
+        min-width: 0;
     }
 }

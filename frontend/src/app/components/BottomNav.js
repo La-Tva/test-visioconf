@@ -33,13 +33,14 @@ export default function BottomNav() {
         { label: "Accueil", icon: <HomeIcon />, link: "/home" },
         { label: "Chats", icon: <ChatIcon />, link: "/messages", badge: totalUnread },
         { label: "Équipes", icon: <TeamIcon />, link: "/team", badge: totalTeamUnread },
-        { label: "Profil", icon: <ProfileIcon user={user} />, link: "/profile" },
+        { label: "Fichiers", icon: <FolderIcon />, link: "/files/personal" },
+        { label: "Membres", icon: <DirectoryIcon />, link: "/annuaire" },
     ];
 
     return (
         <nav className={styles.bottomNav}>
             {navItems.map((item, index) => {
-                const isActive = pathname === item.link;
+                const isActive = pathname.startsWith(item.link);
                 return (
                     <Link 
                         key={index} 
@@ -60,7 +61,7 @@ export default function BottomNav() {
 
 function HomeIcon() {
     return (
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
             <polyline points="9 22 9 12 15 12 15 22"></polyline>
         </svg>
@@ -69,7 +70,7 @@ function HomeIcon() {
 
 function ChatIcon() {
     return (
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
         </svg>
     );
@@ -77,7 +78,7 @@ function ChatIcon() {
 
 function TeamIcon() {
     return (
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
             <circle cx="9" cy="7" r="4"></circle>
             <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
@@ -86,21 +87,20 @@ function TeamIcon() {
     );
 }
 
-function ProfileIcon({ user }) {
-    if (user) {
-        return (
-            <img 
-                src={`https://api.dicebear.com/9.x/shapes/svg?seed=${user._id}`} 
-                alt="Profile" 
-                style={{ width: 24, height: 24, borderRadius: '50%', objectFit: 'cover' }}
-            />
-        );
-    }
+function FolderIcon() {
     return (
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="10"></circle>
-            <circle cx="12" cy="10" r="3"></circle>
-            <path d="M7 20.662V19a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1.662"></path>
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+        </svg>
+    );
+}
+
+function DirectoryIcon() {
+    return (
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="3" y1="9" x2="21" y2="9"></line>
+            <line x1="9" y1="21" x2="9" y2="9"></line>
         </svg>
     );
 }

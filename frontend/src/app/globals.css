@@ -70,7 +70,6 @@ body {
   .page-content {
     height: auto;
     min-height: 100dvh;
-    padding-top: var(--header-height);
   }
 
   /* Prevent iOS zoom on inputs */

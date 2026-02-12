@@ -548,16 +548,14 @@
 }
 
 .myMessageRow .messageBubble {
-    background: linear-gradient(135deg, #1E3664 0%, #0698D6 100%);
+    background: #1E3664;
     color: white;
     border-bottom-right-radius: 4px;
-    box-shadow: 0 4px 12px rgba(6, 152, 214, 0.2);
 }
 
 .friendMessageRow .messageBubble {
-    background: #FFFFFF;
+    background: #F1F5F9;
     color: #1E293B;
-    border: 1px solid rgba(226, 232, 240, 0.8);
     border-bottom-left-radius: 4px;
 }
 
@@ -1202,15 +1200,14 @@
 }
 
 .myMessageRow .messageBubble {
-    background-color: #2563EB;
+    background: #1E3664;
     color: white;
     border-bottom-right-radius: 4px;
 }
 
 .friendMessageRow .messageBubble {
-    background-color: #FFFFFF;
+    background: #F1F5F9;
     color: #0F172A;
-    border: 1px solid #E2E8F0;
     border-bottom-left-radius: 4px;
 }
 
@@ -1815,6 +1812,7 @@
     /* Mobile Layout Fixes */
     .container {
         flex-direction: column;
+        padding-top: 60px;
     }
 
     .sidebar {

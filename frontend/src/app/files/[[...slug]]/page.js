@@ -89,8 +89,19 @@ export default function FilesPage() {
                 
                 if (msg.file_uploading_status) {
                     if (msg.file_uploading_status.success) {
-                        setFiles(prev => [msg.file_uploading_status.file, ...prev]);
-                        handleCloseUploadModal();
+                        const newFile = msg.file_uploading_status.file;
+                        // Only add if it belongs to current view (same category and same space/folder)
+                        const isSameCategory = newFile.category === targetSilo;
+                        
+                        // Check space match (handle null/undefined for root)
+                        const currentSpaceId = currentSpace?._id || null;
+                        const fileSpaceId = newFile.space || null;
+                        const isSameSpace = currentSpaceId === fileSpaceId;
+
+                        if (isSameCategory && isSameSpace) {
+                            setFiles(prev => [newFile, ...prev]);
+                            handleCloseUploadModal();
+                        }
                     } else {
                         alert("Erreur upload: " + msg.file_uploading_status.error);
                         setLoading(false);
@@ -108,9 +119,20 @@ export default function FilesPage() {
 
                 if (msg.space_creating_status) {
                     if (msg.space_creating_status.success) {
-                        setSpaces(prev => [...prev, msg.space_creating_status.space]);
-                        setIsSpaceModalOpen(false);
-                        setNewSpaceName('');
+                        const newSpace = msg.space_creating_status.space;
+                        // Filter by category
+                        const isSameCategory = newSpace.category === targetSilo;
+                        
+                        // Filter by parent (currentSpace)
+                        const currentSpaceId = currentSpace?._id || null;
+                        const spaceParentId = newSpace.parent || null;
+                        const isSameParent = currentSpaceId === spaceParentId;
+
+                        if (isSameCategory && isSameParent) {
+                            setSpaces(prev => [...prev, newSpace]);
+                            setIsSpaceModalOpen(false);
+                            setNewSpaceName('');
+                        }
                     } else {
                         alert("Erreur espace: " + msg.space_creating_status.error);
                     }

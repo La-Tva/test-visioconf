@@ -1336,7 +1336,12 @@ io.on('connection', (socket) => {
                     
                     const fullFile = await File.findById(newFile._id).populate('owner', 'firstname role');
 
-                    // Broadcast only to relevant users
+                    // 1. Respond to uploader immediately
+                    socket.emit('message', JSON.stringify({
+                        file_uploading_status: { success: true, file: fullFile }
+                    }));
+
+                    // 2. Broadcast to other relevant users
                     const sockets = await io.fetchSockets();
                     let associatedSpace = null;
                     if (newFile.space) {
@@ -1344,6 +1349,8 @@ io.on('connection', (socket) => {
                     }
 
                     for (const s of sockets) {
+                        if (s.id === socket.id) continue; // Skip uploader
+
                         if (s.userId) {
                             const sUserRole = s.userRole; 
                             const sUserId = s.userId;
@@ -1355,14 +1362,14 @@ io.on('connection', (socket) => {
                                 canSee = true; 
                             } else if (fullFile.category === 'team') {
                                 const isFileOwner = fullFile.owner._id.toString() === sUserId;
-                                const isStaff = ['admin', 'enseignant'].includes(sUserRole);
+                                // STRICT PRIVACY: Admins/Teachers don't see unless members/owners
                                 let isSpaceMember = false;
                                 let isSpaceOwner = false;
                                 if (associatedSpace) {
                                     if (associatedSpace.members) isSpaceMember = associatedSpace.members.some(m => m.toString() === sUserId);
                                     isSpaceOwner = associatedSpace.owner.toString() === sUserId;
                                 }
-                                canSee = isFileOwner || isStaff || isSpaceMember || isSpaceOwner;
+                                canSee = isFileOwner || isSpaceMember || isSpaceOwner;
                             }
 
                             if (canSee) {
@@ -1496,16 +1503,18 @@ io.on('connection', (socket) => {
                         .populate('members', 'firstname role')
                         .populate('owner', 'firstname role');
 
-                    // Broadcast only to relevant users
+                    // 1. Respond to the creator immediately
+                    socket.emit('message', JSON.stringify({
+                        space_creating_status: { success: true, space: fullSpace }
+                    }));
+
+                    // 2. Broadcast to other relevant users
                     const sockets = await io.fetchSockets();
                     for (const s of sockets) {
+                        // Skip the creator, we just sent it
+                        if (s.id === socket.id) continue;
+
                         if (s.userId) {
-                            // Check if this user should see the space
-                            // 1. Owner
-                            // 2. Member
-                            // 3. Admin/Teacher (if not personal)
-                            // 4. Global space (if they have access to global)
-                            
                             const sUserRole = s.userRole; 
                             const sUserId = s.userId;
                             
@@ -1514,12 +1523,12 @@ io.on('connection', (socket) => {
                             if (fullSpace.category === 'personal') {
                                 canSee = (fullSpace.owner._id.toString() === sUserId);
                             } else if (fullSpace.category === 'global') {
-                                canSee = true; // Simplified, assuming global is public or role-based checked elsewhere
+                                canSee = true; 
                             } else if (fullSpace.category === 'team') {
                                 const isOwner = fullSpace.owner._id.toString() === sUserId;
                                 const isMember = fullSpace.members.some(m => m._id.toString() === sUserId);
-                                const isStaff = ['admin', 'enseignant'].includes(sUserRole);
-                                canSee = isOwner || isMember || isStaff;
+                                // STRICT PRIVACY: Admins/Teachers don't see unless members/owners
+                                canSee = isOwner || isMember; 
                             }
 
                             if (canSee) {
@@ -1565,9 +1574,16 @@ io.on('connection', (socket) => {
                     space.name = newName;
                     await space.save();
 
-                    // Broadcast only to relevant users
+                    // 1. Respond to requester immediately
+                    socket.emit('message', JSON.stringify({
+                        space_renaming_status: { success: true, spaceId, newName }
+                    }));
+
+                    // 2. Broadcast to other relevant users
                     const sockets = await io.fetchSockets();
                     for (const s of sockets) {
+                        if (s.id === socket.id) continue; // Skip requester
+
                         if (s.userId) {
                             const sUserRole = s.userRole; 
                             const sUserId = s.userId;
@@ -1581,8 +1597,8 @@ io.on('connection', (socket) => {
                             } else if (space.category === 'team') {
                                 const isOwner = space.owner.toString() === sUserId;
                                 const isMember = space.members.some(m => m.toString() === sUserId);
-                                const isStaff = ['admin', 'enseignant'].includes(sUserRole);
-                                canSee = isOwner || isMember || isStaff;
+                                // STRICT PRIVACY
+                                canSee = isOwner || isMember;
                             }
 
                             if (canSee) {
@@ -1627,9 +1643,16 @@ io.on('connection', (socket) => {
                     await File.updateMany({ space: spaceId }, { $unset: { space: "" } });
                     await Space.findByIdAndDelete(spaceId);
                     
-                    // Broadcast only to relevant users
+                    // 1. Respond to requester immediately
+                    socket.emit('message', JSON.stringify({
+                        space_deleting_status: { success: true, spaceId: spaceId }
+                    }));
+
+                    // 2. Broadcast to other relevant users
                     const sockets = await io.fetchSockets();
                     for (const s of sockets) {
+                        if (s.id === socket.id) continue; // Skip requester
+
                         if (s.userId) {
                             const sUserRole = s.userRole; 
                             const sUserId = s.userId;
@@ -1643,8 +1666,8 @@ io.on('connection', (socket) => {
                             } else if (space.category === 'team') {
                                 const isOwner = space.owner.toString() === sUserId;
                                 const isMember = space.members.some(m => m.toString() === sUserId);
-                                const isStaff = ['admin', 'enseignant'].includes(sUserRole);
-                                canSee = isOwner || isMember || isStaff;
+                                // STRICT PRIVACY
+                                canSee = isOwner || isMember;
                             }
 
                             if (canSee) {
@@ -1793,7 +1816,12 @@ io.on('connection', (socket) => {
 
                     await File.findByIdAndDelete(fileId);
                     
-                    // Broadcast only to relevant users
+                    // 1. Respond to requester immediately
+                    socket.emit('message', JSON.stringify({
+                        file_deleting_status: { success: true, fileId: fileId }
+                    }));
+
+                    // 2. Broadcast to other relevant users
                     const sockets = await io.fetchSockets();
                     let associatedSpace = null;
                     if (file.space) {
@@ -1801,6 +1829,8 @@ io.on('connection', (socket) => {
                     }
 
                     for (const s of sockets) {
+                        if (s.id === socket.id) continue; // Skip requester
+
                         if (s.userId) {
                              const sUserRole = s.userRole; 
                              const sUserId = s.userId;
@@ -1812,14 +1842,14 @@ io.on('connection', (socket) => {
                                  canSee = true;
                              } else if (file.category === 'team') {
                                 const isFileOwner = file.owner.toString() === sUserId;
-                                const isStaff = ['admin', 'enseignant'].includes(sUserRole);
+                                // STRICT PRIVACY
                                 let isSpaceMember = false;
                                 let isSpaceOwner = false;
                                 if (associatedSpace) {
                                     if (associatedSpace.members) isSpaceMember = associatedSpace.members.some(m => m.toString() === sUserId);
                                     isSpaceOwner = associatedSpace.owner.toString() === sUserId;
                                 }
-                                canSee = isFileOwner || isStaff || isSpaceMember || isSpaceOwner;
+                                canSee = isFileOwner || isSpaceMember || isSpaceOwner;
                              }
 
                              if (canSee) {
@@ -1866,9 +1896,49 @@ io.on('connection', (socket) => {
                     file.name = newName;
                     await file.save();
 
-                    io.emit('message', JSON.stringify({
+                    // 1. Respond to requester immediately
+                    socket.emit('message', JSON.stringify({
                         file_updating_status: { success: true, fileId, newName }
                     }));
+
+                    // 2. Broadcast to other relevant users
+                    const sockets = await io.fetchSockets();
+                    let associatedSpace = null;
+                    if (file.space) {
+                         associatedSpace = await Space.findById(file.space);
+                    }
+
+                    for (const s of sockets) {
+                        if (s.id === socket.id) continue; // Skip requester
+
+                        if (s.userId) {
+                             const sUserRole = s.userRole; 
+                             const sUserId = s.userId;
+                             let canSee = false;
+
+                             if (file.category === 'personal') {
+                                 canSee = (file.owner.toString() === sUserId);
+                             } else if (file.category === 'global') {
+                                 canSee = true;
+                             } else if (file.category === 'team') {
+                                const isFileOwner = file.owner.toString() === sUserId;
+                                // STRICT PRIVACY
+                                let isSpaceMember = false;
+                                let isSpaceOwner = false;
+                                if (associatedSpace) {
+                                    if (associatedSpace.members) isSpaceMember = associatedSpace.members.some(m => m.toString() === sUserId);
+                                    isSpaceOwner = associatedSpace.owner.toString() === sUserId;
+                                }
+                                canSee = isFileOwner || isSpaceMember || isSpaceOwner;
+                             }
+
+                             if (canSee) {
+                                s.emit('message', JSON.stringify({
+                                    file_updating_status: { success: true, fileId, newName }
+                                }));
+                             }
+                        }
+                    }
                 } catch (e) {
                     console.error('Update file error:', e);
                 }

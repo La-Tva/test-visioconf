@@ -796,7 +796,7 @@ export default function FilesPage() {
 
                         <input type="text" className={styles.modalInput} placeholder="Nom du dossier..." value={newSpaceName} onChange={(e) => setNewSpaceName(e.target.value)} autoFocus />
                         
-                        {targetSilo === 'team' && (
+                        {targetSilo === 'team' && !currentSpace && (
                             <div className={styles.memberSelectionArea}>
                                 <label style={{ fontSize: '12px', fontWeight: 700, color: '#64748B', marginBottom: '8px', display: 'block' }}>
                                     Inviter des collaborateurs

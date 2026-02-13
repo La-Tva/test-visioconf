@@ -1,5 +1,7 @@
 import io from "socket.io-client"
 
+const defaultProfilePicture = '/default_profile_picture.png';
+
 class CanalSocketio {
     controleur
     nomDInstance

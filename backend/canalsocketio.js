@@ -118,17 +118,25 @@ class CanalSocketio {
             delete messageToSend.id;
         }
 
-        const payload = JSON.stringify(messageToSend);
-
-        if (!targetIds) {
-            // Broadcast to all connected clients
-            this.io.emit('message', payload);
-        } else {
-            // Send to specific sockets
-            for (const socketId of targetIds) {
-                this.io.to(socketId).emit('message', payload);
+            if (messageToSend['ice-candidate-group-relay']) {
+                const payload = JSON.stringify({ 'ice-candidate-group': messageToSend['ice-candidate-group-relay'] });
+                 if (!targetIds) {
+                    this.io.emit('message', payload);
+                } else {
+                    for (const socketId of targetIds) {
+                        this.io.to(socketId).emit('message', payload);
+                    }
+                }
+            } else {
+                const payload = JSON.stringify(messageToSend);
+                if (!targetIds) {
+                    this.io.emit('message', payload);
+                } else {
+                    for (const socketId of targetIds) {
+                        this.io.to(socketId).emit('message', payload);
+                    }
+                }
             }
-        }
     }
 }
 

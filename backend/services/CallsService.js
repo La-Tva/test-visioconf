@@ -14,7 +14,7 @@ class CallsService {
     listeDesMessagesEmis = [
         'call-made', 'answer-made', 'ice-candidate', 'call-rejected', 'call-ended',
         'active_calls_count', 'user_call_status_changed',
-        'call-made-group', 'answer-made-group', 'ice-candidate-group',
+        'call-made-group', 'answer-made-group', 'ice-candidate-group-relay',
         'team-call-status', 'notify-new-joiner', 'participant-left',
         'team-call-ended', 'join-request-received', 'join-request-status',
         'participant-left-notification'
@@ -498,7 +498,7 @@ class CallsService {
     async handleIceCandidateGroup(socketId, data) {
         const { to, candidate } = data;
         this.controleur.envoie(this, {
-            'ice-candidate-group': { candidate, socket: socketId },
+            'ice-candidate-group-relay': { candidate, socket: socketId },
             id: to
         });
     }

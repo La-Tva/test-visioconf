@@ -84,6 +84,9 @@ class Controleur {
                         if (this.verboseall || this.verbose) {
                             console.log("INFO (controleur): on envoie " + item + " à " + recepteurkey)
                         }
+                        // Prevent self-delivery to avoid infinite recursion
+                        if (recepteurkey === emetteur.nomDInstance) continue;
+
                         try {
                             let result = this.listeAbonnement[item][recepteurkey].traitementMessage(T);
                             if (result && typeof result.catch === 'function') {

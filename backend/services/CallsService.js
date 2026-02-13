@@ -505,71 +505,75 @@ class CallsService {
 
     // --- Disconnect cleanup ---
     async handleDisconnect(socketId) {
-        // Cleanup group calls
-        for (const [teamId, participants] of this.activeGroupCalls) {
-            const userToRemove = [...participants].find(p => p.socketId === socketId);
-            if (userToRemove) {
-                try {
-                    const team = await Team.findById(teamId).populate('owner').populate('members');
-                    if (team) {
-                        const recipients = [...team.members, team.owner];
-                        if (userToRemove.userId === (team.owner._id.toString() || team.owner)) {
-                            this.activeGroupCalls.delete(teamId);
-                            recipients.forEach(r => {
-                                if (r && r.socket_id && r.is_online && r.socket_id !== socketId) {
-                                    this.controleur.envoie(this, {
-                                        'team-call-ended': { teamId },
-                                        id: r.socket_id
-                                    });
-                                }
-                            });
-                        } else {
-                            participants.delete(userToRemove);
-                            const isActive = participants.size > 0;
-                            recipients.forEach(r => {
-                                if (r && r.socket_id && r.is_online && r.socket_id !== socketId) {
-                                    this.controleur.envoie(this, {
-                                        'participant-left': { socket: socketId, teamId },
-                                        id: r.socket_id
-                                    });
-                                    this.controleur.envoie(this, {
-                                        'participant-left-notification': {
-                                            teamId,
-                                            firstname: userToRemove.user?.firstname || 'Un participant'
-                                        },
-                                        id: r.socket_id
-                                    });
-                                    this.controleur.envoie(this, {
-                                        'team-call-status': {
-                                            teamId: team._id, active: isActive,
-                                            participants: Array.from(participants),
-                                            ownerId: team.owner._id
-                                        },
-                                        id: r.socket_id
-                                    });
-                                }
-                            });
-                            if (participants.size === 0) this.activeGroupCalls.delete(teamId);
+        try {
+            // Cleanup group calls
+            for (const [teamId, participants] of this.activeGroupCalls) {
+                const userToRemove = [...participants].find(p => p.socketId === socketId);
+                if (userToRemove) {
+                    try {
+                        const team = await Team.findById(teamId).populate('owner').populate('members');
+                        if (team) {
+                            const recipients = [...team.members, team.owner];
+                            if (userToRemove.userId === (team.owner._id.toString() || team.owner)) {
+                                this.activeGroupCalls.delete(teamId);
+                                recipients.forEach(r => {
+                                    if (r && r.socket_id && r.is_online && r.socket_id !== socketId) {
+                                        this.controleur.envoie(this, {
+                                            'team-call-ended': { teamId },
+                                            id: r.socket_id
+                                        });
+                                    }
+                                });
+                            } else {
+                                participants.delete(userToRemove);
+                                const isActive = participants.size > 0;
+                                recipients.forEach(r => {
+                                    if (r && r.socket_id && r.is_online && r.socket_id !== socketId) {
+                                        this.controleur.envoie(this, {
+                                            'participant-left': { socket: socketId, teamId },
+                                            id: r.socket_id
+                                        });
+                                        this.controleur.envoie(this, {
+                                            'participant-left-notification': {
+                                                teamId,
+                                                firstname: userToRemove.user?.firstname || 'Un participant'
+                                            },
+                                            id: r.socket_id
+                                        });
+                                        this.controleur.envoie(this, {
+                                            'team-call-status': {
+                                                teamId: team._id, active: isActive,
+                                                participants: Array.from(participants),
+                                                ownerId: team.owner._id
+                                            },
+                                            id: r.socket_id
+                                        });
+                                    }
+                                });
+                                if (participants.size === 0) this.activeGroupCalls.delete(teamId);
+                            }
                         }
+                    } catch (e) {
+                        console.error("[DISCONNECT] Error cleaning up group call:", e);
                     }
-                } catch (e) {
-                    console.error("[DISCONNECT] Error cleaning up group call:", e);
                 }
             }
-        }
 
-        // Cleanup 1-on-1 calls
-        if (this.activeCalls.has(socketId)) {
-            const targets = this.activeCalls.get(socketId);
-            targets.forEach(targetId => {
-                if (this.activeCalls.has(targetId)) {
-                    this.activeCalls.get(targetId).delete(socketId);
-                    if (this.activeCalls.get(targetId).size === 0) this.activeCalls.delete(targetId);
-                }
-            });
-            this.activeCalls.delete(socketId);
-            this.broadcastCallCount();
-            this.broadcastUserCallStatus(socketId).catch(e => console.error(e));
+            // Cleanup 1-on-1 calls
+            if (this.activeCalls.has(socketId)) {
+                const targets = this.activeCalls.get(socketId);
+                targets.forEach(targetId => {
+                    if (this.activeCalls.has(targetId)) {
+                        this.activeCalls.get(targetId).delete(socketId);
+                        if (this.activeCalls.get(targetId).size === 0) this.activeCalls.delete(targetId);
+                    }
+                });
+                this.activeCalls.delete(socketId);
+                this.broadcastCallCount();
+                this.broadcastUserCallStatus(socketId).catch(e => console.error(e));
+            }
+        } catch (err) {
+            console.error('[CallsService] Fatal error in handleDisconnect:', err);
         }
     }
 }

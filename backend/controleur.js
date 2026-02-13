@@ -84,7 +84,16 @@ class Controleur {
                         if (this.verboseall || this.verbose) {
                             console.log("INFO (controleur): on envoie " + item + " à " + recepteurkey)
                         }
-                        this.listeAbonnement[item][recepteurkey].traitementMessage(T)
+                        try {
+                            let result = this.listeAbonnement[item][recepteurkey].traitementMessage(T);
+                            if (result && typeof result.catch === 'function') {
+                                result.catch(err => {
+                                    console.error(`ERREUR ASYNC (controleur) lors du traitement de ${item} par ${recepteurkey}:`, err);
+                                });
+                            }
+                        } catch (e) {
+                            console.error(`ERREUR SYNC (controleur) lors du traitement de ${item} par ${recepteurkey}:`, e);
+                        }
                     }
                 }
             }

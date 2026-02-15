@@ -42,6 +42,26 @@ export default function ProfilePage() {
     // Use Socket
     const { controleur, isReady } = useSocket();
 
+    useEffect(() => {
+        const userStr = localStorage.getItem('user');
+        if (!userStr) {
+            router.push('/');
+            return;
+        }
+        try {
+            const userData = JSON.parse(userStr);
+            setUser(userData);
+            setFormData({
+                firstname: userData.firstname || '',
+                phone: userData.phone || '',
+                desc: userData.desc || ''
+            });
+        } catch (e) {
+            console.error(e);
+            router.push('/');
+        }
+    }, [router]);
+
     // Stable component identity for Controller
     const [profileComp] = useState({
         nomDInstance: "ProfileComponent",

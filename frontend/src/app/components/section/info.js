@@ -4,117 +4,154 @@ import styles from './info.module.css';
 
 export default function Info() {
   return (
-    <div className={styles.wrapper}>
-        {/* SECTION 1: ORIGINAL INTRO */}
-        <section className={styles.section} id="intro">
-            <div className={styles.container}>
-                <div className={styles.visualContent}>
-                    <div className={styles.imageCard}>
-                        <img 
-                            src="https://images.unsplash.com/photo-1531403009284-440f080d1e12?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" 
-                            alt="Collaboration" 
-                            className={styles.image} 
-                        />
-                    </div>
-                </div>
-
-                <div className={styles.textContent}>
-                    <div className={styles.tagline}>POURQUOI NOUS CHOISIR ?</div>
-                    <h2 className={styles.title}>Une solution adaptée à l'enseignement supérieur</h2>
-                    <p className={styles.text}>
-                        Découvrez une plateforme conçue spécifiquement pour les besoins des universités. 
-                        Sécurité des données, facilité d'utilisation et intégration transparente avec vos outils existants.
-                    </p>
-
-                    <ul className={styles.featureList}>
-                        <li className={styles.featureItem}>
-                            <span className={styles.checkIcon}>✓</span>
-                            Qualité Haute Définition
-                        </li>
-                        <li className={styles.featureItem}>
-                            <span className={styles.checkIcon}>✓</span>
-                            Sécurité renforcée (RGPD)
-                        </li>
-                        <li className={styles.featureItem}>
-                            <span className={styles.checkIcon}>✓</span>
-                            Accessibilité multi-supports
-                        </li>
-                    </ul>
-                </div>
-            </div>
-        </section>
-
-        {/* SECTION 2: CARDS (FEATURES) */}
-        <section className={styles.hasBackground}>
-            <div className={styles.containerColumn}>
-                <div className={styles.centerHeader}>
-                    <h2 className={styles.title}>Tout ce dont vous avez besoin</h2>
-                    <p className={styles.subtitle}>Des fonctionnalités pensées pour la pédagogie et la collaboration.</p>
-                </div>
-
-                <div className={styles.grid}>
-                    {/* Card 1 */}
-                    <div className={styles.card}>
-                        <div className={styles.cardIcon}>🔒</div>
-                        <h3 className={styles.cardTitle}>Sécurisé</h3>
-                        <p className={styles.cardDesc}>
-                            Vos échanges sont chiffrés de bout en bout. Respect total du RGPD et hébergement en France.
-                        </p>
-                    </div>
-
-                    {/* Card 2 */}
-                    <div className={styles.card}>
-                        <div className={styles.cardIcon}>⚡</div>
-                        <h3 className={styles.cardTitle}>Rapide</h3>
-                        <p className={styles.cardDesc}>
-                            Une latence minimale pour des échanges fluides, même avec une connexion limitée.
-                        </p>
-                    </div>
-
-                    {/* Card 3 */}
-                    <div className={styles.card}>
-                        <div className={styles.cardIcon}>🎓</div>
-                        <h3 className={styles.cardTitle}>Intuitif</h3>
-                        <p className={styles.cardDesc}>
-                            Interface épurée ne nécessitant aucune formation préalable pour les étudiants et enseignants.
-                        </p>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        {/* SECTION 3: SLIDER (Horizontal Scroll) */}
+    <div className={styles.wrapper} id="info">
+        {/* SECTION 1: HOW IT WORKS (Workflow) - NEW */}
         <section className={styles.section}>
             <div className={styles.containerColumn}>
                 <div className={styles.centerHeader}>
-                    <h2 className={styles.title}>En immersion</h2>
-                    <p className={styles.subtitle}>Découvrez l'expérience utilisateur en images.</p>
+                    <div className={styles.tagline}>DÉMARRAGE RAPIDE</div>
+                    <h2 className={styles.title}>Comment ça marche ?</h2>
+                    <p className={styles.subtitle}>Votre salle de classe virtuelle en 3 étapes simples.</p>
                 </div>
 
-                <div className={styles.slider}>
-                    {[1, 2, 3, 4, 5].map((i) => (
-                        <div key={i} className={styles.slide}>
-                             <img 
-                                src={`https://images.unsplash.com/photo-1522202176988-66273c2fd55f?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80&sig=${i}`} 
-                                alt={`Slide ${i}`} 
-                                className={styles.slideImage} 
-                            />
+                <div className={styles.workflowGrid}>
+                    {/* Step 1 */}
+                    <div className={styles.workflowStep}>
+                        <div className={styles.stepNumber}>1</div>
+                        <div className={styles.stepContent}>
+                            <div className={styles.stepIcon}>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                    <circle cx="8.5" cy="7" r="4"></circle>
+                                    <line x1="20" y1="8" x2="20" y2="14"></line>
+                                    <line x1="23" y1="11" x2="17" y2="11"></line>
+                                </svg>
+                            </div>
+                            <h3 className={styles.stepTitle}>Inscrivez-vous</h3>
+                            <p className={styles.stepDesc}>Créez votre compte étudiant ou enseignant en quelques secondes avec votre email universitaire.</p>
                         </div>
-                    ))}
+                    </div>
+
+                    {/* Arrow */}
+                    <div className={styles.workflowArrow}>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                            <polyline points="12 5 19 12 12 19"></polyline>
+                        </svg>
+                    </div>
+
+                    {/* Step 2 */}
+                    <div className={styles.workflowStep}>
+                        <div className={styles.stepNumber}>2</div>
+                        <div className={styles.stepContent}>
+                            <div className={styles.stepIcon}>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                    <circle cx="9" cy="7" r="4"></circle>
+                                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                                </svg>
+                            </div>
+                            <h3 className={styles.stepTitle}>Rejoignez une équipe</h3>
+                            <p className={styles.stepDesc}>Créez ou rejoignez un groupe de travail pour vos projets ou vos cours magistraux.</p>
+                        </div>
+                    </div>
+
+                    {/* Arrow */}
+                    <div className={styles.workflowArrow}>
+                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                            <polyline points="12 5 19 12 12 19"></polyline>
+                        </svg>
+                    </div>
+
+                    {/* Step 3 */}
+                    <div className={styles.workflowStep}>
+                        <div className={styles.stepNumber}>3</div>
+                        <div className={styles.stepContent}>
+                            <div className={styles.stepIcon}>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <polygon points="23 7 16 12 23 17 23 7"></polygon>
+                                    <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
+                                </svg>
+                            </div>
+                            <h3 className={styles.stepTitle}>Lancez l'appel</h3>
+                            <p className={styles.stepDesc}>Démarrez une visioconférence HD avec partage d'écran et chat intégré.</p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>
 
-        {/* SECTION 4: CTA */}
+        {/* SECTION 2: WHY CHOOSE US (Features) - REDESIGNED */}
+        <section className={styles.hasBackground}>
+            <div className={styles.containerColumn}>
+                <div className={styles.centerHeader}>
+                    <div className={styles.tagline}>POURQUOI NOUS CHOISIR ?</div>
+                    <h2 className={styles.title}>Une solution pensée pour l'université</h2>
+                    <p className={styles.subtitle}>
+                        Oubliez les outils complexes. VisioConf offre une expérience fluide, sécurisée et centrée sur la pédagogie.
+                    </p>
+                </div>
+
+                <div className={styles.featureGridFull}>
+                    <div className={styles.miniFeatureCard}>
+                        <div className={styles.miniIcon}>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                            </svg>
+                        </div>
+                        <div className={styles.miniFeatureContent}>
+                            <h4>Sécurité Maximale</h4>
+                            <p>Chiffrement de bout en bout et hébergement souverain pour protéger vos données académiques.</p>
+                        </div>
+                    </div>
+                    <div className={styles.miniFeatureCard}>
+                        <div className={styles.miniIcon}>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                            </svg>
+                        </div>
+                        <div className={styles.miniFeatureContent}>
+                            <h4>Performance</h4>
+                            <p>Optimisé pour les réseaux universitaires et la 4G/5G, assurant une fluidité même en mobilité.</p>
+                        </div>
+                    </div>
+                    <div className={styles.miniFeatureCard}>
+                        <div className={styles.miniIcon}>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M22 10v6M2 10v6"></path>
+                                <path d="M22 16.1A5 5 0 0 1 18 20H6a5 5 0 0 1-5-5.9"></path>
+                                <path d="M2 10a5 5 0 0 1 8-4h4a5 5 0 0 1 8 4"></path>
+                                <line x1="12" y1="2" x2="12" y2="6"></line>
+                            </svg>
+                        </div>
+                        <div className={styles.miniFeatureContent}>
+                            <h4>Outils Pédagogiques</h4>
+                            <p>Tableau blanc dématérialisé, partage de documents et création de sous-groupes de travail.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        {/* SECTION 3: CTA */}
         <section className={styles.ctaSection}>
+            <div className={styles.ctaBackground}></div>
             <div className={styles.ctaContent}>
-                <h2 className={styles.ctaTitle}>Prêt à transformer vos cours ?</h2>
+                <h2 className={styles.ctaTitle}>Prêt à collaborer autrement ?</h2>
                 <p className={styles.ctaText}>
-                    Rejoignez dès maintenant la plateforme de visioconférence de l'Université.
+                    Rejoignez dès maintenant la communauté universitaire sur VisioConf.
                 </p>
-                <Link href="/register">
-                    <button className={styles.ctaButton}>Créer un compte étudiant</button>
-                </Link>
+                <div className={styles.ctaButtons}>
+                     <Link href="/register">
+                        <button className={styles.ctaButtonPrimary}>Créer un compte</button>
+                    </Link>
+                    <Link href="/login">
+                        <button className={styles.ctaButtonSecondary}>Se connecter</button>
+                    </Link>
+                </div>
             </div>
         </section>
     </div>

@@ -15,6 +15,7 @@ class CanalSocketio {
         this.controleur = c
         this.nomDInstance = nom
 
+        // Connect to the backend using the environment variable or fallback to localhost
         this.socket = io(
             process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:4000",
             {

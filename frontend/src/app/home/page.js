@@ -102,6 +102,19 @@ export default function Home() {
                 </div>
 
                 <div className={styles.userContainer}>
+                    <div className={styles.statusSwitcher} style={{cursor: 'default'}}>
+                        <div className={styles.currentStatusBtn} style={{cursor: 'default'}}>
+                            <div className={styles.statusPreview} style={{
+                                backgroundColor: user.disturb_status === 'dnd' ? '#EF4444' : 
+                                                (user.disturb_status === 'away' ? '#F97316' : '#22C55E'),
+                                color: user.disturb_status === 'dnd' ? '#EF4444' : 
+                                       (user.disturb_status === 'away' ? '#F97316' : '#22C55E')
+                            }}></div>
+                            <span className={styles.statusLabelText}>
+                                {user.disturb_status === 'available' ? 'Disponible' : (user.disturb_status === 'away' ? 'Absent' : 'Ne pas déranger')}
+                            </span>
+                        </div>
+                    </div>
 
 
                     <Link href="/profile" className={styles.userMenu}>

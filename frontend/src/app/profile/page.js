@@ -133,6 +133,10 @@ export default function ProfilePage() {
         setShowMenu(false);
         if(!controleur || !user) return;
         
+        // Optimistic UI Update: Reflect change immediately
+        const optimisticUser = { ...user, disturb_status: newStatus };
+        setUser(optimisticUser);
+
         controleur.envoie(profileComp, {
             'update user': { _id: user._id, disturb_status: newStatus }
         });

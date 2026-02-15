@@ -102,33 +102,7 @@ export default function Home() {
                 </div>
 
                 <div className={styles.userContainer}>
-                    <div className={styles.statusSwitcher}>
-                        <button className={styles.currentStatusBtn} onClick={() => setIsStatusMenuOpen(!isStatusMenuOpen)}>
-                            <div className={styles.statusPreview} style={{
-                                backgroundColor: user.disturb_status === 'dnd' ? '#EF4444' : 
-                                                (user.disturb_status === 'away' ? '#F97316' : '#22C55E'),
-                                color: user.disturb_status === 'dnd' ? '#EF4444' : 
-                                       (user.disturb_status === 'away' ? '#F97316' : '#22C55E')
-                            }}></div>
-                            <span className={styles.statusLabelText}>
-                                {user.disturb_status === 'available' ? 'Disponible' : (user.disturb_status === 'away' ? 'Absent' : 'Ne pas déranger')}
-                            </span>
-                        </button>
-                        
-                        {isStatusMenuOpen && (
-                            <div className={styles.statusDropdown}>
-                                <button onClick={() => handleStatusChange('available')}>
-                                    <span className={styles.dot} style={{backgroundColor: '#22C55E'}}></span> Disponible
-                                </button>
-                                <button onClick={() => handleStatusChange('away')}>
-                                    <span className={styles.dot} style={{backgroundColor: '#F97316'}}></span> Absent
-                                </button>
-                                <button onClick={() => handleStatusChange('dnd')}>
-                                    <span className={styles.dot} style={{backgroundColor: '#EF4444'}}></span> Ne pas déranger
-                                </button>
-                            </div>
-                        )}
-                    </div>
+
 
                     <Link href="/profile" className={styles.userMenu}>
                         <img 

@@ -233,7 +233,7 @@ export default function DirectoryPage() {
                         const isPending = u.friendRequests && currentUser && u.friendRequests.includes(currentUser._id);
 
                         return (
-                            <div key={u._id} className={styles.card} onClick={() => setSelectedUser(u)}>
+                            <div key={u._id} className={`${styles.card} ${isMe ? styles.myCard : ''}`} onClick={() => setSelectedUser(u)}>
                                 <div className={styles.cardTop}>
                                     <div className={styles.avatarWrapper}>
                                         <img 

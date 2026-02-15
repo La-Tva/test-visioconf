@@ -136,6 +136,75 @@ export default function Info() {
             </div>
         </section>
 
+        {/* SECTION 3: ALL FEATURES (Bento Grid) - NEW */}
+        <section className={styles.bentoSection}>
+             <div className={styles.containerColumn}>
+                <div className={styles.centerHeader}>
+                    <div className={styles.tagline}>TOUT INCLUS</div>
+                    <h2 className={styles.title}>Une suite complète d'outils</h2>
+                    <p className={styles.subtitle}>
+                        Tout ce dont vous avez besoin pour enseigner et apprendre efficacement à distance.
+                    </p>
+                </div>
+
+                <div className={styles.bentoGrid}>
+                    {/* Card 1: Video HD - Large */}
+                    <div className={`${styles.bentoCard} ${styles.bentoCardLarge}`}>
+                        <div className={styles.bentoIconWrapper}>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 7l-7 5 7 5V7z"></path><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>
+                        </div>
+                        <h3 className={styles.bentoTitle}>Visioconférence HD</h3>
+                        <p className={styles.bentoDesc}>Une qualité d'image cristalline et un son haute fidélité pour des cours comme si vous y étiez. Jusqu'à 100 participants simultanés.</p>
+                    </div>
+
+                    {/* Card 2: Screen Share */}
+                    <div className={styles.bentoCard}>
+                        <div className={styles.bentoIconWrapper}>
+                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M13 3H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-3"></path><path d="M8 21h8"></path><path d="M12 17v4"></path><path d="M17 8l5-5"></path><path d="M17 3h5v5"></path></svg>
+                        </div>
+                        <h3 className={styles.bentoTitle}>Partage d'écran</h3>
+                        <p className={styles.bentoDesc}>Partagez vos présentations, documents ou applications en un clic.</p>
+                    </div>
+
+                    {/* Card 3: Chat */}
+                    <div className={styles.bentoCard}>
+                        <div className={styles.bentoIconWrapper}>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                        </div>
+                        <h3 className={styles.bentoTitle}>Chat live</h3>
+                        <p className={styles.bentoDesc}>Interagissez avec les étudiants, posez des questions et réagissez en direct.</p>
+                    </div>
+
+                    {/* Card 4: Whiteboard - Large */}
+                    <div className={`${styles.bentoCard} ${styles.bentoCardLarge}`}>
+                        <div className={styles.bentoIconWrapper}>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                        </div>
+                        <h3 className={styles.bentoTitle}>Tableau Blanc Interactif</h3>
+                        <p className={styles.bentoDesc}>Schématisez vos idées en temps réel. Outils de dessin avancés collaboratifs pour les explications complexes.</p>
+                    </div>
+
+                    {/* Card 5: Files */}
+                    <div className={styles.bentoCard}>
+                        <div className={styles.bentoIconWrapper}>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg>
+                        </div>
+                        <h3 className={styles.bentoTitle}>Partage de fichiers</h3>
+                        <p className={styles.bentoDesc}>Envoyez vos supports de cours PDF, PPTX directement dans la salle.</p>
+                    </div>
+
+                    {/* Card 6: Recording */}
+                    <div className={styles.bentoCard}>
+                         <div className={styles.bentoIconWrapper}>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 7l-7 5 7 5V7z"></path><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>
+                        </div>
+                        <h3 className={styles.bentoTitle}>Enregistrement</h3>
+                        <p className={styles.bentoDesc}>Enregistrez vos cours pour que les étudiants puissent les revoir plus tard.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         {/* SECTION 3: CTA */}
         <section className={styles.ctaSection}>
             <div className={styles.ctaBackground}></div>

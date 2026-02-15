@@ -42,61 +42,42 @@ export default function ProfilePage() {
     // Use Socket
     const { controleur, isReady } = useSocket();
 
-    useEffect(() => {
-        const userStr = localStorage.getItem('user');
-        if (!userStr) {
-            router.push('/');
-            return;
-        }
-        try {
-            const userData = JSON.parse(userStr);
-            setUser(userData);
-            setFormData({
-                firstname: userData.firstname || '',
-                phone: userData.phone || '',
-                desc: userData.desc || ''
-            });
-        } catch (e) {
-            console.error(e);
-            router.push('/');
-        }
-    }, [router]);
-
-    useEffect(() => {
-        if (!user || !controleur || !isReady) return;
-
-        const profileComp = {
-            nomDInstance: "ProfileComponent",
-            traitementMessage: (msg) => {
-                if (msg['user_updating status']) {
-                    const response = msg['user_updating status'];
-                    if (response.success) {
-                        const updatedUser = response.user;
-                        setUser(updatedUser);
-                        setFormData({
-                            firstname: updatedUser.firstname || '',
-                            phone: updatedUser.phone || '',
-                            desc: updatedUser.desc || ''
-                        });
-                        localStorage.setItem('user', JSON.stringify(updatedUser));
-                        setIsEditing(false);
-                        setStatus("Profil mis à jour !");
-                        setTimeout(() => setStatus(''), 3000);
-                    } else {
-                        setStatus("Erreur: " + response.error);
-                    }
-                }
-                if (msg.user_deleting_status) {
-                    if (msg.user_deleting_status.success) {
-                        localStorage.removeItem('user');
-                        router.push('/login');
-                    } else {
-                        setStatus("Erreur suppression: " + msg.user_deleting_status.error);
-                        setShowDeleteModal(false);
-                    }
+    // Stable component identity for Controller
+    const [profileComp] = useState({
+        nomDInstance: "ProfileComponent",
+        traitementMessage: (msg) => {
+            if (msg['user_updating status']) {
+                const response = msg['user_updating status'];
+                if (response.success) {
+                    const updatedUser = response.user;
+                    setUser(updatedUser);
+                    setFormData({
+                        firstname: updatedUser.firstname || '',
+                        phone: updatedUser.phone || '',
+                        desc: updatedUser.desc || ''
+                    });
+                    localStorage.setItem('user', JSON.stringify(updatedUser));
+                    setIsEditing(false);
+                    setStatus("Profil mis à jour !");
+                    setTimeout(() => setStatus(''), 3000);
+                } else {
+                    setStatus("Erreur: " + response.error);
                 }
             }
-        };
+            if (msg.user_deleting_status) {
+                if (msg.user_deleting_status.success) {
+                    localStorage.removeItem('user');
+                    router.push('/login');
+                } else {
+                    setStatus("Erreur suppression: " + msg.user_deleting_status.error);
+                    setShowDeleteModal(false);
+                }
+            }
+        }
+    });
+
+    useEffect(() => {
+        if (!controleur || !isReady) return;
 
         const sent = ['update user', 'delete_user'];
         const received = ['user_updating status', 'user_deleting_status'];
@@ -106,11 +87,11 @@ export default function ProfilePage() {
         return () => {
             controleur.desincription(profileComp, sent, received);
         };
-    }, [user, controleur, isReady, router]);
+    }, [controleur, isReady, profileComp]);
 
     const handleSave = () => {
-        if (!user || !formData.firstname.trim()) return;
-        controleur.envoie({ nomDInstance: "ProfileComponent" }, {
+        if (!user || !formData.firstname.trim() || !controleur) return;
+        controleur.envoie(profileComp, {
             'update user': { 
                 _id: user._id, 
                 firstname: formData.firstname,
@@ -122,14 +103,17 @@ export default function ProfilePage() {
     };
 
     const confirmDelete = () => {
-        controleur.envoie({ nomDInstance: "ProfileComponent" }, {
+        if (!controleur) return;
+        controleur.envoie(profileComp, {
             delete_user: { _id: user._id }
         });
     };
 
     const changeStatus = (newStatus) => {
         setShowMenu(false);
-        controleur.envoie({ nomDInstance: "ProfileComponent" }, {
+        if(!controleur || !user) return;
+        
+        controleur.envoie(profileComp, {
             'update user': { _id: user._id, disturb_status: newStatus }
         });
     };

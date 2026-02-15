@@ -194,7 +194,7 @@ export default function ProfilePage() {
                                                  <span className={styles.statusDot} style={{background:'#EF4444'}}></span> Occupé
                                              </button>
                                              <div className={styles.divider}></div>
-                                             <button className={styles.dropdownBtn} onClick={() => { localStorage.removeItem('user'); router.push('/login'); }}>
+                                             <button className={styles.dropdownBtn} onClick={() => { localStorage.removeItem('user'); router.push('/'); }}>
                                                  <LogoutIcon /> Se déconnecter
                                              </button>
                                              <button className={`${styles.dropdownBtn} ${styles.red}`} onClick={() => { setShowMenu(false); setShowDeleteModal(true); }}>

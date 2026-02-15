@@ -173,7 +173,7 @@ export default function Sidebar() {
                     {user && isPinned && (
                         <button 
                             className={styles.logoutBtn} 
-                            onClick={() => { localStorage.removeItem('user'); window.location.href = '/login'; }}
+                            onClick={() => { localStorage.removeItem('user'); window.location.href = '/'; }}
                             title="Se déconnecter"
                         >
                             <LogoutIcon />

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import styles from './landing.module.css';
 import Info from './components/section/info';
 import Footer from './components/Footer';
+import LandingNavbar from './components/LandingNavbar';
 
 export default function Landing() {
   const [isLoggedIn, setIsLoggedIn] = React.useState(false);
@@ -18,6 +19,7 @@ export default function Landing() {
 
   return (
     <div className={styles.container}>
+      <LandingNavbar isLoggedIn={isLoggedIn} />
       {/* Wrapper for the 80vh Hero Section */}
       <div className={styles.topSection}>
           {/* Header */}

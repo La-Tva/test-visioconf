@@ -235,19 +235,23 @@ export default function DirectoryPage() {
                                 alt={currentUser.firstname}
                                 className={styles.bannerAvatar}
                             />
-                            <div className={styles.bannerStatus}>
-                                <div className={styles.bannerStatusDot} style={{
-                                    backgroundColor: currentUser.disturb_status === 'dnd' ? '#EF4444' : 
-                                            (currentUser.disturb_status === 'away' ? '#F97316' : '#22C55E')
-                                }}></div>
-                                <span>{currentUser.disturb_status === 'dnd' ? 'Occupé' : (currentUser.disturb_status === 'away' ? 'Absent' : 'Disponible')}</span>
-                            </div>
                         </div>
 
                         <div className={styles.bannerContent}>
                             <div className={styles.bannerInfo}>
                                 <h2 className={styles.bannerName}>{currentUser.firstname} <span style={{fontSize:'14px', color:'#94a3b8', fontWeight:'500'}}>(Vous)</span></h2>
-                                <span className={styles.bannerRole}>{currentUser.role || 'Membre'}</span>
+                                
+                                <div className={styles.bannerBadges}>
+                                    <span className={styles.bannerRole}>{currentUser.role || 'Membre'}</span>
+                                    <div className={styles.bannerStatusBadge}>
+                                        <div className={styles.bannerStatusDot} style={{
+                                            backgroundColor: currentUser.disturb_status === 'dnd' ? '#EF4444' : 
+                                                    (currentUser.disturb_status === 'away' ? '#F97316' : '#22C55E')
+                                        }}></div>
+                                        <span>{currentUser.disturb_status === 'dnd' ? 'Occupé' : (currentUser.disturb_status === 'away' ? 'Absent' : 'Disponible')}</span>
+                                    </div>
+                                </div>
+
                                 <p className={styles.bannerBio}>{currentUser.desc || "Ajoutez une description à votre profil pour vous présenter."}</p>
                                 
                                 <div className={styles.bannerContactGrid}>

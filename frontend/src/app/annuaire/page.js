@@ -262,6 +262,7 @@ export default function DirectoryPage() {
                                             {u.role || 'Étudiant'}
                                         </span>
                                         {isFriend && <span className={styles.friendBadge}>Ami</span>}
+                                        {isMe && <span className={styles.meBadge}>Vous</span>}
                                     </div>
 
                                     {!isMe && !isFriend && (

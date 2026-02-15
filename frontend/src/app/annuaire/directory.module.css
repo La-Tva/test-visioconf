@@ -281,6 +281,16 @@
     border-radius: 6px;
 }
 
+.meBadge {
+    font-size: 10px;
+    font-weight: 800;
+    color: #059669;
+    text-transform: uppercase;
+    background: #D1FAE5;
+    padding: 4px 10px;
+    border-radius: 6px;
+}
+
 /* Modal Overlay & Preview Modal */
 .modalOverlay {
     position: fixed;

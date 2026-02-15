@@ -185,32 +185,7 @@ export default function ProfilePage() {
                                      {status && <div className={styles.toastStatus}>{status}</div>}
                                  </div>
 
-                                 <div className={styles.headerActions}>
-                                     <button className={styles.glassCircleBtn} onClick={() => setShowMenu(!showMenu)}>
-                                         <SettingsIcon />
-                                     </button>
-                                     {showMenu && (
-                                         <div className={styles.glassDropdown}>
-                                             <div className={styles.dropdownTitle}>Réglages</div>
-                                             <button className={styles.dropdownBtn} onClick={() => changeStatus('available')}>
-                                                 <span className={styles.statusDot} style={{background:'#22C55E'}}></span> Disponible
-                                             </button>
-                                             <button className={styles.dropdownBtn} onClick={() => changeStatus('away')}>
-                                                 <span className={styles.statusDot} style={{background:'#F97316'}}></span> Absent
-                                             </button>
-                                             <button className={styles.dropdownBtn} onClick={() => changeStatus('dnd')}>
-                                                 <span className={styles.statusDot} style={{background:'#EF4444'}}></span> Occupé
-                                             </button>
-                                             <div className={styles.divider}></div>
-                                             <button className={styles.dropdownBtn} onClick={() => { localStorage.removeItem('user'); router.push('/'); }}>
-                                                 <LogoutIcon /> Se déconnecter
-                                             </button>
-                                             <button className={`${styles.dropdownBtn} ${styles.red}`} onClick={() => { setShowMenu(false); setShowDeleteModal(true); }}>
-                                                 <TrashIcon /> Supprimer le profil
-                                             </button>
-                                         </div>
-                                     )}
-                                 </div>
+
                              </div>
                         </div>
 

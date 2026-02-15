@@ -1,5 +1,6 @@
 "use client";
 import React, { useEffect, useState, useRef } from 'react';
+import Link from 'next/link';
 import styles from './directory.module.css';
 import { useSocket } from '../context/SocketContext';
 import { usePreload } from '../context/PreloadContext';

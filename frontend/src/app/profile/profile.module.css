@@ -479,4 +479,11 @@
         padding: 1.5rem;
         border-radius: 18px;
     }
+
+    .glassDropdown {
+        right: auto;
+        left: 50%;
+        transform: translateX(-50%);
+        min-width: 260px;
+    }
 }

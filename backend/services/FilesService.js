@@ -10,12 +10,12 @@ class FilesService {
     listeDesMessagesEmis = [
         'files', 'file_uploading_status', 'file_updating_status', 'file_deleting_status',
         'spaces', 'space_creating_status', 'space_deleting_status', 'space_renaming_status',
-        'resolved_path'
+        'resolved_path', 'space_members_updating_status'
     ];
     listeDesMessagesRecus = [
         'get_files', 'upload_file', 'update_file', 'delete_file',
         'create_space', 'get_spaces', 'delete_space', 'rename_space',
-        'resolve_path'
+        'resolve_path', 'update_space_members'
     ];
 
     constructor(controleur, io, nom) {
@@ -38,6 +38,7 @@ class FilesService {
         else if (mesg.delete_space) await this.handleDeleteSpace(socketId, mesg.delete_space);
         else if (mesg.rename_space) await this.handleRenameSpace(socketId, mesg.rename_space);
         else if (mesg.resolve_path) await this.handleResolvePath(socketId, mesg.resolve_path);
+        else if (mesg.update_space_members) await this.handleUpdateSpaceMembers(socketId, mesg.update_space_members);
     }
 
     // --- Helper: check access for team/personal/global ---
@@ -498,6 +499,52 @@ class FilesService {
             );
         } catch (e) {
             console.error('Rename space error:', e);
+        }
+    }
+
+    async handleUpdateSpaceMembers(socketId, data) {
+        const { spaceId, members, userId } = data;
+        try {
+            const user = await User.findById(userId);
+            const space = await Space.findById(spaceId);
+            if (!user || !space) return;
+
+            // Only owner or admin/enseignant can manage members
+            const isOwner = space.owner.toString() === userId;
+            const isStaff = ['admin', 'enseignant'].includes(user.role);
+
+            if (!isOwner && !isStaff) {
+                return this.controleur.envoie(this, {
+                    space_members_updating_status: { success: false, error: 'Permission refusée' },
+                    id: socketId
+                });
+            }
+
+            space.members = members;
+            await space.save();
+
+            const updatedSpace = await Space.findById(spaceId)
+                .populate('members', 'firstname role picture')
+                .populate('owner', 'firstname role picture');
+
+            this.controleur.envoie(this, {
+                space_members_updating_status: { success: true, space: updatedSpace },
+                id: socketId
+            });
+
+            // Broadcast to all authorized users (old and new members + owner)
+            await this.broadcastToAuthorized(socketId,
+                { space_members_updating_status: { success: true, space: updatedSpace } },
+                updatedSpace.category,
+                updatedSpace.owner.toString(),
+                updatedSpace.members.map(m => m._id.toString())
+            );
+        } catch (e) {
+            console.error('Update space members error:', e);
+            this.controleur.envoie(this, {
+                space_members_updating_status: { success: false, error: 'Erreur lors de la mise à jour des membres' },
+                id: socketId
+            });
         }
     }
 

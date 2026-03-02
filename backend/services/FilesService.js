@@ -268,12 +268,19 @@ class FilesService {
             if (!user || !file) return;
 
             const isOwner = file.owner.toString() === userId;
+            const isStaff = ['admin', 'enseignant'].includes(user.role);
+
             let isAuthorized = false;
-            if (file.category === 'team') isAuthorized = isOwner;
-            else if (file.category === 'personal') isAuthorized = isOwner;
-            else isAuthorized = true;
+            if (file.category === 'team') {
+                isAuthorized = isOwner;
+            } else if (file.category === 'personal') {
+                isAuthorized = isOwner;
+            } else if (file.category === 'global') {
+                isAuthorized = isStaff;
+            }
 
             if (!isAuthorized) {
+                console.warn(`[FilesService] 🚫 File deletion denied for user ${userId} on file ${fileId} (${file.category})`);
                 return this.controleur.envoie(this, {
                     file_deleting_status: { success: false, error: 'Permission refusée' },
                     id: socketId
@@ -428,12 +435,19 @@ class FilesService {
             if (!user || !space) return;
 
             const isOwner = space.owner.toString() === userId;
+            const isStaff = ['admin', 'enseignant'].includes(user.role);
+            
             let isAuthorized = false;
-            if (space.category === 'team') isAuthorized = isOwner;
-            else if (space.category === 'personal') isAuthorized = isOwner;
-            else isAuthorized = true;
+            if (space.category === 'team') {
+                isAuthorized = isOwner; // Only creator can delete team folders
+            } else if (space.category === 'personal') {
+                isAuthorized = isOwner; // Only owner can delete personal folders
+            } else if (space.category === 'global') {
+                isAuthorized = isStaff; // Only staff can delete global folders
+            }
 
             if (!isAuthorized) {
+                console.warn(`[FilesService] 🚫 Deletion denied for user ${userId} on space ${spaceId} (${space.category})`);
                 return this.controleur.envoie(this, {
                     space_deleting_status: { success: false, error: 'Permission refusée' },
                     id: socketId

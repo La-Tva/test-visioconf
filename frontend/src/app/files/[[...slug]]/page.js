@@ -538,15 +538,17 @@ export default function FilesPage() {
     // Teachers/Admins: Can manage everything.
     // Students/All: Can manage IF they are the owner.
     const canManageItem = (item) => {
-        if (!currentUser) return false;
+        if (!currentUser || !item) return false;
         
         const isStaff = ['admin', 'enseignant'].includes(currentUser.role);
-        if (isStaff) return true;
-
-        // Students can manage in 'personal' and 'team' if they are owner
-        if (activeTab === 'global') return false; 
+        const itemOwnerId = item.owner?._id || item.owner;
+        const isOwner = itemOwnerId === currentUser._id;
         
-        return item.owner?._id === currentUser._id || item.owner === currentUser._id;
+        // For Global spaces/files: Only staff can manage
+        if (item.category === 'global') return isStaff;
+        
+        // For Team and Personal: Only the owner (creator) can manage
+        return isOwner;
     };
 
     return (
@@ -760,11 +762,9 @@ export default function FilesPage() {
                                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
                                             </button>
                                         )}
-                                        {['admin', 'enseignant'].includes(currentUser?.role) && (
-                                            <button className={`${styles.actionBtn} ${styles.deleteBtn}`} onClick={(e) => handleDeleteSpace(e, s._id)}>
-                                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2 2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                                            </button>
-                                        )}
+                                        <button className={`${styles.actionBtn} ${styles.deleteBtn}`} title="Supprimer" onClick={(e) => handleDeleteSpace(e, s._id)}>
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2 2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                                        </button>
                                     </div>
                                 )}
                             </div>

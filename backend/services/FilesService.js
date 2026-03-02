@@ -539,6 +539,9 @@ class FilesService {
                 });
             }
 
+            // Capture old members to notify those who are removed
+            const oldMemberIdsStr = (space.members || []).map(m => m.toString());
+
             space.members = members;
             await space.save();
             console.log(`[FilesService] ✅ Space members updated successfully in DB`);
@@ -556,15 +559,18 @@ class FilesService {
 
             // Broadcast to all authorized users (old and new members + owner)
             const ownerIdStr = updatedSpace.owner._id ? updatedSpace.owner._id.toString() : updatedSpace.owner.toString();
-            const memberIdsStr = updatedSpace.members.map(m => (m._id || m).toString());
+            const newMemberIdsStr = updatedSpace.members.map(m => (m._id || m).toString());
+            
+            // Merge old and new members to ensure everyone is notified
+            const allUsersToNotify = Array.from(new Set([...oldMemberIdsStr, ...newMemberIdsStr]));
 
             await this.broadcastToAuthorized(socketId,
                 { space_members_updating_status: { success: true, space: updatedSpace } },
                 updatedSpace.category,
                 ownerIdStr,
-                memberIdsStr
+                allUsersToNotify
             );
-            console.log(`[FilesService] 📢 Broadcast complete`);
+            console.log(`[FilesService] 📢 Broadcast complete to ${allUsersToNotify.length} members`);
         } catch (e) {
             console.error('[FilesService] ❌ Update space members error:', e);
             this.controleur.envoie(this, {

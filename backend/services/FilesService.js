@@ -504,16 +504,21 @@ class FilesService {
 
     async handleUpdateSpaceMembers(socketId, data) {
         const { spaceId, members, userId } = data;
+        console.log(`[FilesService] 👥 Update member request for space ${spaceId} by user ${userId}. Members count: ${members?.length}`);
         try {
             const user = await User.findById(userId);
             const space = await Space.findById(spaceId);
-            if (!user || !space) return;
+            if (!user || !space) {
+                console.warn(`[FilesService] ⚠️ User or Space not found: user=${!!user}, space=${!!space}`);
+                return;
+            }
 
             // Only owner or admin/enseignant can manage members
             const isOwner = space.owner.toString() === userId;
             const isStaff = ['admin', 'enseignant'].includes(user.role);
 
             if (!isOwner && !isStaff) {
+                console.warn(`[FilesService] 🚫 Permission denied for user ${userId} on space ${spaceId}`);
                 return this.controleur.envoie(this, {
                     space_members_updating_status: { success: false, error: 'Permission refusée' },
                     id: socketId
@@ -522,25 +527,32 @@ class FilesService {
 
             space.members = members;
             await space.save();
+            console.log(`[FilesService] ✅ Space members updated successfully in DB`);
 
             const updatedSpace = await Space.findById(spaceId)
                 .populate('members', 'firstname role picture')
                 .populate('owner', 'firstname role picture');
-
-            this.controleur.envoie(this, {
+            
+            const response = {
                 space_members_updating_status: { success: true, space: updatedSpace },
                 id: socketId
-            });
+            };
+            this.controleur.envoie(this, response);
+            console.log(`[FilesService] 📤 Response sent to sender`);
 
             // Broadcast to all authorized users (old and new members + owner)
+            const ownerIdStr = updatedSpace.owner._id ? updatedSpace.owner._id.toString() : updatedSpace.owner.toString();
+            const memberIdsStr = updatedSpace.members.map(m => (m._id || m).toString());
+
             await this.broadcastToAuthorized(socketId,
                 { space_members_updating_status: { success: true, space: updatedSpace } },
                 updatedSpace.category,
-                updatedSpace.owner.toString(),
-                updatedSpace.members.map(m => m._id.toString())
+                ownerIdStr,
+                memberIdsStr
             );
+            console.log(`[FilesService] 📢 Broadcast complete`);
         } catch (e) {
-            console.error('Update space members error:', e);
+            console.error('[FilesService] ❌ Update space members error:', e);
             this.controleur.envoie(this, {
                 space_members_updating_status: { success: false, error: 'Erreur lors de la mise à jour des membres' },
                 id: socketId

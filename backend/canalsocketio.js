@@ -28,6 +28,7 @@ class CanalSocketio {
         'call-team', 'get_active_calls',
         'call-peer-group', 'make-answer-group', 'ice-candidate-group',
         'leave-group-call', 'join-request-response',
+        'update_space_members',
         'client_deconnexion'
     ];
 
@@ -48,7 +49,8 @@ class CanalSocketio {
         'team-call-status', 'notify-new-joiner', 'participant-left',
         'team-call-ended', 'join-request-received', 'join-request-status',
         'participant-left-notification',
-        'receive_private_message'
+        'receive_private_message',
+        'space_members_updating_status'
     ];
 
     constructor(ioServer, controleur, nom) {

@@ -73,10 +73,7 @@ class FilesService {
         const msgStr = JSON.stringify(eventPayload);
         try {
             if (category === 'global') {
-                const sockets = await this.io.fetchSockets();
-                for (const s of sockets) {
-                    if (s.id !== senderSocketId) s.emit('message', msgStr);
-                }
+                this.io.emit('message', msgStr);
             } else if (category === 'team') {
                 const authorizedIds = [...new Set([ownerId, ...(memberIds || [])])];
                 const onlineUsers = await User.find({

@@ -110,7 +110,7 @@ export default function FilesPage() {
                     console.log('[FilesComponent] 📤 file_uploading_status received:', msg.file_uploading_status);
                     if (msg.file_uploading_status.success) {
                         const newFile = msg.file_uploading_status.file;
-                        const isSameCategory = newFile.category === _targetSilo;
+                        const isSameCategory = newFile.category === _activeTab;
                         const currentSpaceId = _currentSpace?._id || null;
                         const fileSpaceId = newFile.space || null;
                         const isSameSpace = currentSpaceId === fileSpaceId;
@@ -119,9 +119,12 @@ export default function FilesPage() {
                             const ownerId = newFile.owner?._id || newFile.owner;
                             isAuthorized = ownerId === _currentUser._id;
                         }
-                        console.log('[FilesComponent] 📤 upload filter:', { isSameCategory, isSameSpace, isAuthorized, fileCategory: newFile.category, _targetSilo, fileSpaceId, currentSpaceId });
+                        console.log('[FilesComponent] 📤 upload filter:', { isSameCategory, isSameSpace, isAuthorized, fileCategory: newFile.category, _activeTab, fileSpaceId, currentSpaceId });
                         if (isSameCategory && isSameSpace && isAuthorized) {
-                            setFiles(prev => [newFile, ...prev]);
+                            setFiles(prev => {
+                                if (prev.some(f => f._id === newFile._id)) return prev;
+                                return [newFile, ...prev];
+                            });
                             handleCloseUploadModal();
                         } else {
                             console.warn('[FilesComponent] ⚠️ Upload event FILTERED OUT!');
@@ -158,7 +161,10 @@ export default function FilesPage() {
                         }
                         
                         if (isSameCategory && isSameParent && isAuthorized) {
-                            setSpaces(prev => [...prev, newSpace].sort((a,b) => a.name.localeCompare(b.name)));
+                            setSpaces(prev => {
+                                if (prev.some(s => s._id === newSpace._id)) return prev;
+                                return [...prev, newSpace].sort((a,b) => a.name.localeCompare(b.name));
+                            });
                         }
 
                         // Sync rootSpaces if it's a root folder and we're authorized

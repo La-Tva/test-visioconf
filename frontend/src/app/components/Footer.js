@@ -33,9 +33,9 @@ export default function Footer() {
             <div className={styles.column}>
                 <h4 className={styles.heading}>Légal</h4>
                 <ul className={styles.list}>
-                    <li><Link href="#">Mentions Légales</Link></li>
-                    <li><Link href="#">Politique de confidentialité</Link></li>
-                    <li><Link href="#">RGPD</Link></li>
+                    <li><Link href="/mentions-legales">Mentions Légales</Link></li>
+                    <li><Link href="/politique-de-confidentialite">Politique de confidentialité</Link></li>
+                    <li><Link href="/rgpd">RGPD</Link></li>
                 </ul>
             </div>
         </div>

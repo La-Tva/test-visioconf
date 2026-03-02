@@ -39,7 +39,8 @@ body {
   background: var(--Background);
   color: var(--Texte);
   min-height: 100%;
-  overflow-x: hidden;
+  overflow-x: clip;
+  /* Changed from hidden to fix sticky positioning bugs */
 }
 
 .responsive-layout {

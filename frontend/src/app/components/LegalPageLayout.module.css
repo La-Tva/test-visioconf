@@ -1,0 +1,290 @@
+.container {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--Background);
+    position: relative;
+    /* overflow-x: hidden; removed to fix sticky behavior */
+}
+
+/* Background Blobs */
+.blob1 {
+    position: fixed;
+    top: -10%;
+    right: -5%;
+    width: 50vw;
+    height: 50vw;
+    background: radial-gradient(circle, rgba(6, 152, 214, 0.05) 0%, rgba(6, 152, 214, 0) 70%);
+    border-radius: 50%;
+    filter: blur(80px);
+    z-index: 0;
+    pointer-events: none;
+    animation: moveBlob 20s infinite alternate;
+}
+
+.blob2 {
+    position: fixed;
+    bottom: -10%;
+    left: -10%;
+    width: 40vw;
+    height: 40vw;
+    background: radial-gradient(circle, rgba(30, 54, 100, 0.04) 0%, rgba(30, 54, 100, 0) 70%);
+    border-radius: 50%;
+    filter: blur(60px);
+    z-index: 0;
+    pointer-events: none;
+    animation: moveBlobReverse 25s infinite alternate;
+}
+
+@keyframes moveBlob {
+    0% {
+        transform: translate(0, 0);
+    }
+
+    100% {
+        transform: translate(-30px, 30px);
+    }
+}
+
+@keyframes moveBlobReverse {
+    0% {
+        transform: translate(0, 0);
+    }
+
+    100% {
+        transform: translate(30px, -30px);
+    }
+}
+
+/* Scroll Progress */
+.progressBarContainer {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    background: rgba(0, 0, 0, 0.05);
+    z-index: 2000;
+}
+
+.progressBar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--Secondaire), var(--Accent-1));
+    width: 0%;
+    transition: width 0.1s ease;
+}
+
+.contentWrapper {
+    flex: 1;
+    padding: 140px 5% 100px;
+    max-width: 1400px;
+    /* Increased to accommodate sidebar */
+    margin: 0 auto;
+    width: 100%;
+    z-index: 1;
+    overflow: visible;
+}
+
+.mainGrid {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 4rem;
+    align-items: start;
+    overflow: visible;
+}
+
+/* Sidebar for TL;DR */
+.tldrSidebar {
+    position: sticky;
+    top: 100px;
+    /* Adjusted to be closer to viewport top while scrolling */
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    align-self: start;
+    height: fit-content;
+}
+
+.tldrCard {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(10px);
+    padding: 1.5rem;
+    border-radius: var(--radius-lg);
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.02);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    animation: fadeInRight 0.6s ease-out both;
+}
+
+@keyframes fadeInRight {
+    from {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.tldrCard:hover {
+    transform: translateX(-5px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+    background: rgba(255, 255, 255, 0.9);
+}
+
+.tldrIcon {
+    width: 44px;
+    height: 44px;
+    background: linear-gradient(135deg, #F0F9FF 0%, #E0F2FE 100%);
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: var(--Secondaire);
+}
+
+.tldrContent h3 {
+    font-size: 1rem;
+    font-weight: 800;
+    margin: 0 0 0.25rem 0;
+    color: var(--Primaire);
+}
+
+.tldrContent p {
+    font-size: 0.9rem;
+    color: var(--Texte-light);
+    margin: 0;
+    line-height: 1.4;
+}
+
+/* Main Content Area */
+.contentArea {
+    width: 100%;
+}
+
+.card {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(20px);
+    padding: 4rem;
+    border-radius: var(--radius-xl);
+    box-shadow: 0 30px 60px -12px rgba(30, 54, 100, 0.08);
+    border: 1px solid rgba(255, 255, 255, 1);
+    animation: fadeInUp 0.8s ease-out;
+}
+
+.title {
+    font-size: 4rem;
+    font-weight: 950;
+    margin-bottom: 3rem;
+    color: var(--Primaire);
+    letter-spacing: -0.05em;
+    line-height: 1;
+}
+
+.section {
+    margin-bottom: 4rem;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.6s ease-out;
+}
+
+.section.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.section h2 {
+    font-size: 2rem;
+    font-weight: 800;
+    margin-bottom: 1.5rem;
+    color: var(--Primaire);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.section h2::before {
+    content: "";
+    display: block;
+    width: 24px;
+    height: 4px;
+    background: var(--Secondaire);
+    border-radius: 2px;
+}
+
+.section p {
+    font-size: 1.2rem;
+    line-height: 1.8;
+    color: var(--Texte-light);
+    margin-bottom: 1.5rem;
+}
+
+.section ul {
+    margin-bottom: 1.5rem;
+    padding-left: 2rem;
+    color: var(--Texte-light);
+}
+
+.section li {
+    margin-bottom: 0.75rem;
+    line-height: 1.7;
+    font-size: 1.1rem;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(40px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (max-width: 1024px) {
+    .mainGrid {
+        grid-template-columns: 1fr;
+        gap: 2rem;
+    }
+
+    .tldrSidebar {
+        position: relative;
+        top: 0;
+        margin-bottom: 2rem;
+        order: -1;
+        /* Place TL;DR back on top for mobile */
+        flex-direction: row;
+        overflow-x: auto;
+        padding-bottom: 1rem;
+    }
+
+    .tldrCard {
+        min-width: 280px;
+    }
+}
+
+@media (max-width: 768px) {
+    .contentWrapper {
+        padding-top: 100px;
+    }
+
+    .card {
+        padding: 3rem 1.5rem;
+    }
+
+    .title {
+        font-size: 2.5rem;
+    }
+
+    .tldrSidebar {
+        flex-direction: column;
+    }
+}

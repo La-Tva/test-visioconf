@@ -145,7 +145,9 @@ export default function FilesPage() {
                     console.log('[FilesComponent] 📁 space_creating_status received:', msg.space_creating_status);
                     if (msg.space_creating_status.success) {
                         const newSpace = msg.space_creating_status.space;
-                        const isSameCategory = newSpace.category === _targetSilo;
+                        
+                        // Add to spaces list if it matches current view
+                        const isSameCategory = newSpace.category === _activeTab;
                         const currentSpaceId = _currentSpace?._id || null;
                         const spaceParentId = newSpace.parent || null;
                         const isSameParent = currentSpaceId === spaceParentId;
@@ -154,14 +156,21 @@ export default function FilesPage() {
                             const ownerId = newSpace.owner?._id || newSpace.owner;
                             isAuthorized = ownerId === _currentUser._id;
                         }
-                        console.log('[FilesComponent] 📁 create filter:', { isSameCategory, isSameParent, isAuthorized, spaceCategory: newSpace.category, _targetSilo, spaceParentId, currentSpaceId });
+                        
                         if (isSameCategory && isSameParent && isAuthorized) {
-                            setSpaces(prev => [...prev, newSpace]);
-                            setIsSpaceModalOpen(false);
-                            setNewSpaceName('');
-                        } else {
-                            console.warn('[FilesComponent] ⚠️ Create space event FILTERED OUT!');
+                            setSpaces(prev => [...prev, newSpace].sort((a,b) => a.name.localeCompare(b.name)));
                         }
+
+                        // Sync rootSpaces if it's a root folder and we're authorized
+                        if (!newSpace.parent && isAuthorized && (newSpace.category === 'team' || isSameCategory)) {
+                            setRootSpaces(prev => {
+                                if (prev.some(s => s._id === newSpace._id)) return prev;
+                                return [...prev, newSpace].sort((a,b) => a.name.localeCompare(b.name));
+                            });
+                        }
+
+                        setIsSpaceModalOpen(false);
+                        setNewSpaceName('');
                     } else {
                         alert("Erreur espace: " + msg.space_creating_status.error);
                     }
@@ -171,12 +180,14 @@ export default function FilesPage() {
                 if (msg.space_deleting_status) {
                     console.log('[FilesComponent] 🗑️ space_deleting_status:', msg.space_deleting_status);
                     if (msg.space_deleting_status.success) {
-                        setSpaces(prev => prev.filter(s => s._id !== msg.space_deleting_status.spaceId));
-                        if (_currentSpace?._id === msg.space_deleting_status.spaceId) {
+                        const delId = msg.space_deleting_status.spaceId;
+                        setSpaces(prev => prev.filter(s => s._id !== delId));
+                        setRootSpaces(prev => prev.filter(s => s._id !== delId));
+                        if (_currentSpace?._id === delId) {
                             handleBreadcrumbClick(null, -1);
                         }
                     } else {
-                        alert("Erreur suppression espace: " + msg.space_deleting_status.error);
+                        alert("Erreur suppression espace : " + msg.space_deleting_status.error);
                     }
                     setLoading(false);
                 }
@@ -184,7 +195,10 @@ export default function FilesPage() {
                 if (msg.space_renaming_status) {
                     console.log('[FilesComponent] ✏️ space_renaming_status:', msg.space_renaming_status);
                     if (msg.space_renaming_status.success) {
-                        setSpaces(prev => prev.map(s => s._id === msg.space_renaming_status.spaceId ? { ...s, name: msg.space_renaming_status.newName } : s));
+                        const { spaceId, newName } = msg.space_renaming_status;
+                        const updateFn = prev => prev.map(s => s._id === spaceId ? { ...s, name: newName } : s);
+                        setSpaces(updateFn);
+                        setRootSpaces(updateFn);
                     }
                     setLoading(false);
                 }
@@ -199,7 +213,34 @@ export default function FilesPage() {
                     console.log('[FilesComponent] 👥 space_members_updating_status:', msg.space_members_updating_status);
                     if (msg.space_members_updating_status.success) {
                         const updatedSpace = msg.space_members_updating_status.space;
-                        setSpaces(prev => prev.map(s => s._id === updatedSpace._id ? updatedSpace : s));
+                        
+                        setSpaces(prev => {
+                            const exists = prev.find(s => s._id === updatedSpace._id);
+                            if (exists) {
+                                return prev.map(s => s._id === updatedSpace._id ? updatedSpace : s);
+                            } else {
+                                // Add it if it fits the current view
+                                const isSameCategory = updatedSpace.category === _activeTab;
+                                const currentSpaceId = _currentSpace?._id || null;
+                                const spaceParentId = updatedSpace.parent || null;
+                                const isSameParent = currentSpaceId === spaceParentId;
+                                if (isSameCategory && isSameParent) {
+                                    return [...prev, updatedSpace].sort((a,b) => a.name.localeCompare(b.name));
+                                }
+                                return prev;
+                            }
+                        });
+
+                        // Sync rootSpaces
+                        if (!updatedSpace.parent) {
+                            setRootSpaces(prev => {
+                                const exists = prev.find(s => s._id === updatedSpace._id);
+                                if (exists) return prev.map(s => s._id === updatedSpace._id ? updatedSpace : s);
+                                if (updatedSpace.category === 'team') return [...prev, updatedSpace].sort((a,b) => a.name.localeCompare(b.name));
+                                return prev;
+                            });
+                        }
+
                         setIsMemberModalOpen(false);
                         setCurrentMemberSpace(null);
                         setSelectedMembers([]);
@@ -485,7 +526,7 @@ export default function FilesPage() {
 
     const filteredUsers = (allUsers || []).filter(u => 
         u._id !== currentUser?._id &&
-        (u.firstname.toLowerCase().includes(userSearch.toLowerCase()) || u.email.toLowerCase().includes(userSearch.toLowerCase()))
+        (`${u.firstname} ${u.lastname} ${u.email}`).toLowerCase().includes(userSearch.toLowerCase())
     );
 
     const handleDeleteSpace = (e, spaceId) => {

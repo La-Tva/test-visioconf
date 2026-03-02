@@ -214,7 +214,14 @@ export default function FilesPage() {
                     if (msg.space_members_updating_status.success) {
                         const updatedSpace = msg.space_members_updating_status.space;
                         
+                        const isOwner = (updatedSpace.owner?._id || updatedSpace.owner) === _currentUser._id;
+                        const isMember = (updatedSpace.members || []).some(m => (m._id || m) === _currentUser._id);
+                        const stillAuthorized = isOwner || isMember || updatedSpace.category !== 'team';
+
                         setSpaces(prev => {
+                            if (!stillAuthorized) {
+                                return prev.filter(s => s._id !== updatedSpace._id);
+                            }
                             const exists = prev.find(s => s._id === updatedSpace._id);
                             if (exists) {
                                 return prev.map(s => s._id === updatedSpace._id ? updatedSpace : s);
@@ -234,11 +241,18 @@ export default function FilesPage() {
                         // Sync rootSpaces
                         if (!updatedSpace.parent) {
                             setRootSpaces(prev => {
+                                if (!stillAuthorized) {
+                                    return prev.filter(s => s._id !== updatedSpace._id);
+                                }
                                 const exists = prev.find(s => s._id === updatedSpace._id);
                                 if (exists) return prev.map(s => s._id === updatedSpace._id ? updatedSpace : s);
                                 if (updatedSpace.category === 'team') return [...prev, updatedSpace].sort((a,b) => a.name.localeCompare(b.name));
                                 return prev;
                             });
+                        }
+
+                        if (!stillAuthorized && _currentSpace?._id === updatedSpace._id) {
+                            handleBreadcrumbClick(null, -1);
                         }
 
                         setIsMemberModalOpen(false);

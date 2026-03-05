@@ -10,12 +10,12 @@ class UsersService {
         'users', 'user_updating status', 'user_deleting_status',
         'user_updated', 'user_deleted',
         'receive_friend_request', 'friend_request_accepted',
-        'friend_removed', 'friends'
+        'friend_removed', 'friends', 'directory'
     ];
     listeDesMessagesRecus = [
         'get users', 'update user', 'delete_user',
         'friend_request', 'friend_response', 'remove_friend',
-        'get friends'
+        'get friends', 'get_directory'
     ];
 
     constructor(controleur, io, nom) {
@@ -49,6 +49,9 @@ class UsersService {
         }
         else if (mesg['get friends']) {
             await this.handleGetFriends(socketId, mesg['get friends']);
+        }
+        else if (mesg.get_directory) {
+            await this.handleGetDirectory(socketId);
         }
     }
 
@@ -226,6 +229,22 @@ class UsersService {
             }
         } catch (e) {
             console.error('Get friends error:', e);
+        }
+    }
+
+    async handleGetDirectory(socketId) {
+        try {
+            const users = await User.find({}, 'firstname lastname email is_online disturb_status picture role');
+            this.controleur.envoie(this, {
+                directory: { success: true, users },
+                id: socketId
+            });
+        } catch (e) {
+            console.error('Get directory error:', e);
+            this.controleur.envoie(this, {
+                directory: { success: false, error: 'Erreur lors de la récupération de l\'annuaire' },
+                id: socketId
+            });
         }
     }
 }

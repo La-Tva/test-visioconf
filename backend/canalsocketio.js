@@ -29,6 +29,7 @@ class CanalSocketio {
         'call-peer-group', 'make-answer-group', 'ice-candidate-group',
         'leave-group-call', 'join-request-response',
         'update_space_members',
+        'get_directory',
         'client_deconnexion'
     ];
 
@@ -50,6 +51,7 @@ class CanalSocketio {
         'team-call-ended', 'join-request-received', 'join-request-status',
         'participant-left-notification',
         'receive_private_message',
+        'directory',
         'space_members_updating_status'
     ];
 
